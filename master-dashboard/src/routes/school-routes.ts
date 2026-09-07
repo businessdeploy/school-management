@@ -184,7 +184,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
     res.render('school-detail', {
       pageTitle: `${school.name} - Fleet Overview`,
       school,
-      client,
+      schoolClient: client,
       network,
       containerStatus,
       logs: typeof logs === 'string' ? logs : String(logs),
