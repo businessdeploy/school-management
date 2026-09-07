@@ -15,10 +15,9 @@ export class GatewayProxy {
       if (proxyRes.headers && proxyRes.headers.location) {
         const host = req.headers['x-forwarded-host'] || req.headers.host;
         const proto = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
-        proxyRes.headers.location = proxyRes.headers.location.replace(
-          /https?:\/\/127\.0\.0\.1:8080/g,
-          `${proto}://${host}`
-        );
+        proxyRes.headers.location = proxyRes.headers.location
+          .replace(/https?:\/\/127\.0\.0\.1:8080/g, `https://${host}`)
+          .replace(/^http:\/\//i, 'https://');
       }
     });
 

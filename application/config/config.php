@@ -30,9 +30,10 @@ if (!empty($env_base_url)) {
 } else {
     $raw_host = !empty($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '');
     if (!empty($raw_host)) {
-        $proto = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
-                 (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
-                 ? 'https://' : 'http://';
+        $is_https = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
+                    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ||
+                    (strpos($raw_host, 'localhost') === false && strpos($raw_host, '127.0.0.1') === false);
+        $proto = $is_https ? 'https://' : 'http://';
         $config['base_url'] = $proto . $raw_host . '/';
     } else {
         $config['base_url'] = '';
