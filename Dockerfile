@@ -31,7 +31,7 @@ WORKDIR /app
 COPY master-dashboard/package*.json ./
 RUN npm install --omit=dev
 COPY master-dashboard/dist ./dist
-RUN mkdir -p /app/public
+COPY master-dashboard/public ./public
 
 # 5. Smart School PHP Application (fast single-copy with owner flag, no slow chown -R)
 WORKDIR /var/www/html

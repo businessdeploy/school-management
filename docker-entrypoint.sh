@@ -18,6 +18,8 @@ if [ -d "/var/www/html/tenants" ]; then
         fi
     done
 fi
+mkdir -p /app/public
+cp -r /var/www/html/master-dashboard/public/* /app/public/ 2>/dev/null || true
 service apache2 start || apache2ctl start || true
 
 echo "[DockerEntrypoint] Starting Prime School Fleet Master Orchestrator on port 3000..."
