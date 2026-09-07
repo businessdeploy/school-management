@@ -33,15 +33,11 @@ RUN rm -f /var/www/html/index.html \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/uploads /var/www/html/application/config 2>/dev/null || true
 
-# Build Master Dashboard (TypeScript -> JavaScript)
+# Copy pre-compiled Master Dashboard Application
 WORKDIR /app
-COPY master-dashboard/package*.json master-dashboard/tsconfig.json ./
-RUN npm install
-COPY master-dashboard/src/ ./src/
-RUN npm run build
-RUN cp -r src/views dist/views
-RUN cp src/database.sql dist/database.sql 2>/dev/null || true
-RUN npm prune --production
+COPY master-dashboard/package*.json ./
+RUN npm install --omit=dev
+COPY master-dashboard/dist ./dist
 RUN mkdir -p /app/public
 
 # Startup Entrypoint

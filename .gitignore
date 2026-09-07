@@ -7,7 +7,6 @@ Thumbs.db
 
 # Node / Master Dashboard
 master-dashboard/node_modules/
-master-dashboard/dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
