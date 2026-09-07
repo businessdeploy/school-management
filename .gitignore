@@ -24,6 +24,7 @@ backup/*
 uploads/*
 !uploads/index.html
 !uploads/school_content/
+!uploads/addon_images/
 !uploads/staff_images/
 !uploads/student_images/
 
