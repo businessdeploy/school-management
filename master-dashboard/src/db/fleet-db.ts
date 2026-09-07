@@ -205,7 +205,10 @@ export class FleetDb {
                   if (typeof val === 'number') return String(val);
                   if (typeof val === 'boolean') return val ? '1' : '0';
                   if (Buffer.isBuffer(val)) return `0x${val.toString('hex')}`;
-                  if (val instanceof Date) return `'${val.toISOString().slice(0, 19).replace('T', ' ')}'`;
+                  if (val instanceof Date) {
+                    if (isNaN(val.getTime())) return "'0000-00-00 00:00:00'";
+                    return `'${val.toISOString().slice(0, 19).replace('T', ' ')}'`;
+                  }
                   const strVal = String(val)
                     .replace(/\\/g, '\\\\')
                     .replace(/'/g, "\\'")
