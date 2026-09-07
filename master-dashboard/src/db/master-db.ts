@@ -56,7 +56,22 @@ export class MasterDb {
     schools: [],
   };
 
+  private static resolveDataFilePath(): string {
+    if (process.env.MASTER_STORE_PATH) {
+      return process.env.MASTER_STORE_PATH;
+    }
+    if (fs.existsSync('/var/www/html/tenants')) {
+      return '/var/www/html/tenants/master-store.json';
+    }
+    if (fs.existsSync(config.tenantsStoragePath)) {
+      return path.join(config.tenantsStoragePath, 'master-store.json');
+    }
+    return path.resolve(__dirname, '../../data/master-store.json');
+  }
+
   public static init() {
+    this.dataFilePath = this.resolveDataFilePath();
+    console.log('[MasterDb] Initialized store at:', this.dataFilePath);
     const dataDir = path.dirname(this.dataFilePath);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
