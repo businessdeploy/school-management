@@ -18,8 +18,8 @@ export const config = {
   masterSsoSecret: process.env.MASTER_SSO_SECRET || 'ss-master-orchestrator-secret-key-2026',
   
   // Master Domain & Networks
-  masterDomain: process.env.MASTER_DOMAIN || 'localhost:3000',
-  defaultNetworkDomain: process.env.DEFAULT_NETWORK_DOMAIN || 'localhost',
+  masterDomain: process.env.MASTER_DOMAIN || 'manage-school-crm.4d68er.easypanel.host',
+  defaultNetworkDomain: process.env.DEFAULT_NETWORK_DOMAIN || 'manage-school-crm.4d68er.easypanel.host',
   
   // Fleet MariaDB Configuration
   fleetDb: {

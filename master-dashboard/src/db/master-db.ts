@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { config } from '../config';
 
 export interface NetworkRecord {
   id: string;
@@ -72,6 +73,65 @@ export class MasterDb {
     } else {
       this.seedDefaults();
     }
+
+    // Auto-migrate domain if rootDomain or school subdomains still point to localhost
+    try {
+      let modified = false;
+      const targetRoot = config.defaultNetworkDomain;
+      const defaultNet = this.data.networks.find((n) => n.id === 'net_default');
+      if (defaultNet && (defaultNet.rootDomain === 'localhost' || defaultNet.rootDomain.includes('localhost'))) {
+        defaultNet.rootDomain = targetRoot;
+        modified = true;
+      }
+
+      for (const school of this.data.schools) {
+        if (school.subdomain && (school.subdomain.includes('localhost') || !school.subdomain.includes('.'))) {
+          school.subdomain = `${school.slug}.${targetRoot}`;
+          modified = true;
+        }
+      }
+
+      if (modified) {
+        this.save();
+        console.log(`[MasterDb] Auto-migrated school and network domains to live host: ${targetRoot}`);
+      }
+    } catch (migErr) {
+      console.warn('[MasterDb] Domain auto-migration notice:', migErr);
+    }
+  }
+
+  /**
+   * Synchronize the currently active live domain with the fleet network and school subdomains.
+   */
+  public static syncLiveDomain(hostHeader?: string): string {
+    const raw = hostHeader || config.defaultNetworkDomain;
+    const liveHost = raw.split(':')[0].toLowerCase();
+
+    if (!liveHost || liveHost === 'localhost' || liveHost === '127.0.0.1') {
+      return liveHost || 'localhost';
+    }
+
+    let modified = false;
+    const defaultNet = this.data.networks.find((n) => n.id === 'net_default');
+    if (defaultNet && defaultNet.rootDomain !== liveHost) {
+      console.log(`[MasterDb] Syncing default network domain to live host: ${defaultNet.rootDomain} -> ${liveHost}`);
+      defaultNet.rootDomain = liveHost;
+      modified = true;
+    }
+
+    for (const school of this.data.schools) {
+      if (school.subdomain && (school.subdomain.includes('localhost') || !school.subdomain.endsWith(`.${liveHost}`))) {
+        school.subdomain = `${school.slug}.${liveHost}`;
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      this.save();
+      console.log(`[MasterDb] Synchronized ${this.data.schools.length} schools to live domain: *.${liveHost}`);
+    }
+
+    return liveHost;
   }
 
   private static seedDefaults() {
