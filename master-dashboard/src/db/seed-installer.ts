@@ -42,7 +42,10 @@ export class SeedInstaller {
     // 4. Import database.sql schema
     if (fs.existsSync(config.sqlSeedPath)) {
       console.log(`[Provisioner] Importing 196 tables from: ${config.sqlSeedPath}`);
-      const sqlContent = fs.readFileSync(config.sqlSeedPath, 'utf-8');
+      let sqlContent = fs.readFileSync(config.sqlSeedPath, 'utf-8');
+      // Ensure all CREATE TABLE statements are idempotent
+      sqlContent = sqlContent.replace(/CREATE TABLE `/gi, 'CREATE TABLE IF NOT EXISTS `');
+      
       const pool = FleetDb.getPool();
       const conn = await pool.getConnection();
 
