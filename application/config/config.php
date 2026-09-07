@@ -26,13 +26,16 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $env_base_url = getenv('BASE_URL');
 if (!empty($env_base_url)) {
     $config['base_url'] = rtrim($env_base_url, '/') . '/';
-} elseif (isset($_SERVER['HTTP_HOST'])) {
-    $proto = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
-             (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
-             ? 'https://' : 'http://';
-    $config['base_url'] = $proto . $_SERVER['HTTP_HOST'] . '/';
 } else {
-    $config['base_url'] = '';
+    $raw_host = !empty($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '');
+    if (!empty($raw_host)) {
+        $proto = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
+                 (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+                 ? 'https://' : 'http://';
+        $config['base_url'] = $proto . $raw_host . '/';
+    } else {
+        $config['base_url'] = '';
+    }
 }
 
 /*

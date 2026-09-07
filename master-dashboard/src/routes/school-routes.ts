@@ -4,6 +4,7 @@ import { SeedInstaller } from '../db/seed-installer';
 import { FleetDb } from '../db/fleet-db';
 import { DockerService } from '../services/docker-service';
 import { SsoService } from '../services/sso-service';
+import { EasypanelService } from '../services/easypanel-service';
 import { config } from '../config';
 
 const router = Router();
@@ -132,14 +133,20 @@ router.post('/create', async (req: Request, res: Response) => {
 
     // 3. Launch isolated container
     await DockerService.launchTenantContainer({
-      slug: cleanSlug,
-      containerName,
-      dbName,
-      domain: customDomain || subdomain,
-      ramLimitMb: 512,
-    });
+       slug: cleanSlug,
+       containerName,
+       dbName,
+       domain: customDomain || subdomain,
+       ramLimitMb: 512,
+     });
 
-    // 4. Update status to active
+    // 4. Register Traefik domain in Easypanel for instant live access
+    await EasypanelService.registerDomain(subdomain);
+    if (customDomain) {
+      await EasypanelService.registerDomain(customDomain);
+    }
+
+    // 5. Update status to active
     MasterDb.updateSchool(newSchool.id, { status: 'active' });
 
     res.redirect(`/schools/${newSchool.id}`);

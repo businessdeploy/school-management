@@ -97,13 +97,16 @@ export class GatewayProxy {
       `);
     }
 
-    // 3. Active Tenant: Forward to isolated container
-    const target = `http://${school.containerName}:80`;
+    // 3. Active Tenant: Forward to internal PHP backend (port 8080) or dedicated container
+    const target = process.env.PHP_BACKEND_URL || 'http://127.0.0.1:8080';
+    req.headers['x-tenant-slug'] = school.slug;
+    req.headers['x-tenant-db'] = school.dbName;
     req.headers['x-forwarded-host'] = req.headers.host;
-    req.headers['x-forwarded-proto'] = req.secure ? 'https' : 'http';
+    req.headers['x-forwarded-proto'] = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
 
     return GatewayProxy.proxy.web(req, res, { target }, (err) => {
-      // Fallback if container is not directly reachable on Docker bridge
+      console.warn(`[GatewayProxy] Proxy to ${target} failed for ${school.slug}:`, err.message);
+      // Fallback if PHP backend is not yet ready
       const ssoUrl = SsoService.getSsoRedirectUrl(req.headers.host || school.subdomain, school.slug, 1);
       res.status(200).send(`
         <!DOCTYPE html>

@@ -1,7 +1,8 @@
 .git
 .gitignore
 .dockerignore
-master-dashboard
+master-dashboard/node_modules
+master-dashboard/dist
 caddy
 tenants
 scratch

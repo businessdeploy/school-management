@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { MasterDb } from '../db/master-db';
 import { DnsService } from '../services/dns-service';
+import { EasypanelService } from '../services/easypanel-service';
 
 const router = Router();
 
@@ -44,13 +45,15 @@ router.post('/verify-domain', async (req: Request, res: Response) => {
   });
 });
 
-router.post('/bind-domain', (req: Request, res: Response) => {
+router.post('/bind-domain', async (req: Request, res: Response) => {
   const { schoolId, customDomain } = req.body;
   if (schoolId && customDomain) {
+    const cleanDomain = customDomain.trim().toLowerCase();
     MasterDb.updateSchool(schoolId, {
-      customDomain: customDomain.trim().toLowerCase(),
+      customDomain: cleanDomain,
       sslStatus: 'active',
     });
+    await EasypanelService.registerDomain(cleanDomain);
   }
   res.redirect('/networks');
 });
