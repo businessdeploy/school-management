@@ -74,13 +74,82 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
 /* ==========================================================================
    Modern Header & Navbar
    ========================================================================== */
-.main-header {
+.main-header,
+body.fixed .main-header {
     background: #ffffff !important;
     box-shadow: var(--ss-shadow) !important;
     border-bottom: 1px solid var(--ss-border) !important;
-    position: sticky;
-    top: 0;
-    z-index: 1020;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1030 !important;
+    height: 56px !important;
+}
+
+body.fixed .content-wrapper,
+body.fixed .right-side,
+.content-wrapper {
+    padding-top: 56px !important;
+}
+
+body.fixed .main-sidebar,
+.main-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    padding-top: 56px !important;
+    height: 100vh !important;
+    z-index: 1020 !important;
+}
+
+body:not(.sidebar-collapse) .main-sidebar {
+    overflow-y: auto !important;
+}
+
+body.sidebar-collapse .main-sidebar {
+    overflow: visible !important;
+}
+
+/* Custom smooth scrollbar for sidebar */
+.main-sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+.main-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.main-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+body.light-mode .main-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.main-header .logo img {
+    max-height: 40px;
+    width: auto;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+@media (max-width: 767px) {
+    .main-header,
+    body.fixed .main-header {
+        position: relative !important;
+        height: auto !important;
+    }
+    body.fixed .main-sidebar,
+    .main-sidebar {
+        position: absolute !important;
+        padding-top: 0 !important;
+        height: auto !important;
+    }
+    body.fixed .content-wrapper,
+    body.fixed .right-side,
+    .content-wrapper {
+        padding-top: 0 !important;
+    }
 }
 
 .main-header .navbar {

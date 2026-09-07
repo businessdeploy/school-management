@@ -56,6 +56,8 @@ $role            = $this->customlib->getUserRole();
                 if (themeClassNavigation) {
                     classList.add(themeClassNavigation);
                 }
+
+                classList.add('fixed');
             }
 
             // === Apply layout and update icons ===
@@ -191,7 +193,7 @@ if ($this->customlib->getRTL() != "") {
          var baseurl = "<?php echo base_url(); ?>";
     </script>
 
-    <body class="hold-transition skin-blue sidebar-mini">
+    <body class="hold-transition skin-blue sidebar-mini fixed">
 
 <script>
 

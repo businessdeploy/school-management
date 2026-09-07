@@ -44,6 +44,8 @@
                     console.log(themeClassNavigation);
                     classList.add(themeClassNavigation);
                 }
+
+                classList.add('fixed');
             }
 
             // === Apply layout and update icons ===
@@ -171,7 +173,7 @@
   </style>
     </head>
 	
-    <body class="hold-transition skin-blue sidebar-mini">		
+    <body class="hold-transition skin-blue sidebar-mini fixed">		
 
 
        <div class="wrapper">
