@@ -1,0 +1,534 @@
+/**
+ * Modern Design System & Theme Overrides for Smart School
+ * Elevates Bootstrap 3 & AdminLTE 2.x to a contemporary, clean SaaS look.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --ss-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --ss-primary: #4f46e5;
+    --ss-primary-hover: #4338ca;
+    --ss-primary-light: #eef2ff;
+    --ss-primary-rgb: 79, 70, 229;
+    
+    --ss-secondary: #64748b;
+    --ss-success: #10b981;
+    --ss-success-light: #ecfdf5;
+    --ss-warning: #f59e0b;
+    --ss-warning-light: #fffbeb;
+    --ss-danger: #ef4444;
+    --ss-danger-light: #fef2f2;
+    --ss-info: #0ea5e9;
+    --ss-info-light: #f0f9ff;
+    
+    --ss-bg: #f8fafc;
+    --ss-card-bg: #ffffff;
+    --ss-sidebar-bg: #0f172a;
+    --ss-sidebar-hover: #1e293b;
+    --ss-sidebar-text: #94a3b8;
+    --ss-sidebar-active-text: #ffffff;
+    
+    --ss-border: #e2e8f0;
+    --ss-border-light: #f1f5f9;
+    --ss-text-main: #1e293b;
+    --ss-text-muted: #64748b;
+    
+    --ss-radius-sm: 6px;
+    --ss-radius: 10px;
+    --ss-radius-lg: 14px;
+    --ss-radius-full: 9999px;
+    
+    --ss-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --ss-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --ss-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --ss-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    
+    --ss-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   Base & Typography
+   ========================================================================== */
+body, html {
+    font-family: var(--ss-font) !important;
+    background-color: var(--ss-bg) !important;
+    color: var(--ss-text-main);
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+    font-family: var(--ss-font) !important;
+    font-weight: 700;
+    color: var(--ss-text-main);
+    letter-spacing: -0.02em;
+}
+
+.content-wrapper, .right-side, .main-footer {
+    background-color: var(--ss-bg) !important;
+    border-color: var(--ss-border) !important;
+}
+
+/* ==========================================================================
+   Modern Header & Navbar
+   ========================================================================== */
+.main-header {
+    background: #ffffff !important;
+    box-shadow: var(--ss-shadow) !important;
+    border-bottom: 1px solid var(--ss-border) !important;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+
+.main-header .navbar {
+    background: transparent !important;
+    margin-bottom: 0;
+    min-height: 56px;
+}
+
+.main-header .logo {
+    background: #ffffff !important;
+    color: var(--ss-primary) !important;
+    border-bottom: 1px solid var(--ss-border) !important;
+    border-right: 1px solid var(--ss-border) !important;
+    height: 56px;
+    line-height: 56px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    transition: var(--ss-transition);
+}
+
+.main-header .navbar .nav > li > a {
+    color: var(--ss-text-muted) !important;
+    font-weight: 500;
+    font-size: 13.5px;
+    padding: 18px 16px;
+    transition: var(--ss-transition);
+}
+
+.main-header .navbar .nav > li > a:hover,
+.main-header .navbar .nav > li > a:focus,
+.main-header .navbar .nav .open > a {
+    background: var(--ss-border-light) !important;
+    color: var(--ss-primary) !important;
+}
+
+.main-header .sidebar-toggle {
+    color: var(--ss-text-muted) !important;
+    padding: 18px 16px;
+    line-height: 20px;
+    transition: var(--ss-transition);
+}
+
+.main-header .sidebar-toggle:hover {
+    background: var(--ss-border-light) !important;
+    color: var(--ss-primary) !important;
+}
+
+/* Notification & User Badges */
+.navbar-nav > .notifications-menu > .dropdown-menu,
+.navbar-nav > .messages-menu > .dropdown-menu,
+.navbar-nav > .tasks-menu > .dropdown-menu,
+.navbar-nav > .user-menu > .dropdown-menu {
+    border-radius: var(--ss-radius);
+    box-shadow: var(--ss-shadow-lg);
+    border: 1px solid var(--ss-border);
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+/* ==========================================================================
+   Sleek Modern Sidebar
+   ========================================================================== */
+.main-sidebar, .left-side {
+    background-color: var(--ss-sidebar-bg) !important;
+    box-shadow: var(--ss-shadow-md);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-menu > li.header {
+    background: transparent !important;
+    color: #64748b !important;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    padding: 16px 20px 8px 20px;
+}
+
+.sidebar-menu > li > a {
+    color: var(--ss-sidebar-text) !important;
+    padding: 11px 18px !important;
+    border-radius: var(--ss-radius);
+    margin: 3px 12px;
+    font-size: 13.5px;
+    font-weight: 500;
+    transition: var(--ss-transition);
+    border-left: none !important;
+}
+
+.sidebar-menu > li > a > i {
+    font-size: 15px;
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+    color: #94a3b8;
+    transition: var(--ss-transition);
+}
+
+.sidebar-menu > li:hover > a,
+.sidebar-menu > li.active > a {
+    background-color: var(--ss-sidebar-hover) !important;
+    color: var(--ss-sidebar-active-text) !important;
+}
+
+.sidebar-menu > li.active > a {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.25) 0%, rgba(99, 102, 241, 0.15) 100%) !important;
+    color: #ffffff !important;
+    border-left: 3px solid var(--ss-primary) !important;
+}
+
+.sidebar-menu > li.active > a > i,
+.sidebar-menu > li:hover > a > i {
+    color: #a5b4fc !important;
+}
+
+.sidebar-menu .treeview-menu {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    padding: 4px 0 6px 0;
+    margin: 0 12px;
+    border-radius: var(--ss-radius-sm);
+}
+
+.sidebar-menu .treeview-menu > li > a {
+    color: #94a3b8 !important;
+    padding: 8px 15px 8px 30px !important;
+    font-size: 13px;
+    border-radius: var(--ss-radius-sm);
+    transition: var(--ss-transition);
+}
+
+.sidebar-menu .treeview-menu > li > a:hover,
+.sidebar-menu .treeview-menu > li.active > a {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ==========================================================================
+   Cards, Boxes & Panels
+   ========================================================================== */
+.box, .panel, .modal-content {
+    background: var(--ss-card-bg) !important;
+    border: 1px solid var(--ss-border) !important;
+    border-radius: var(--ss-radius) !important;
+    box-shadow: var(--ss-shadow) !important;
+    margin-bottom: 24px;
+    transition: var(--ss-transition);
+}
+
+.box-header {
+    border-bottom: 1px solid var(--ss-border-light) !important;
+    padding: 16px 20px !important;
+}
+
+.box-header .box-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--ss-text-main) !important;
+}
+
+.box-body {
+    padding: 20px !important;
+}
+
+.box-footer {
+    border-top: 1px solid var(--ss-border-light) !important;
+    background-color: var(--ss-bg) !important;
+    border-bottom-left-radius: var(--ss-radius) !important;
+    border-bottom-right-radius: var(--ss-radius) !important;
+    padding: 14px 20px !important;
+}
+
+/* ==========================================================================
+   Modern Metric Widgets & Info Boxes
+   ========================================================================== */
+.info-box {
+    background: var(--ss-card-bg) !important;
+    border: 1px solid var(--ss-border) !important;
+    border-radius: var(--ss-radius) !important;
+    box-shadow: var(--ss-shadow) !important;
+    min-height: 84px;
+    margin-bottom: 20px;
+    transition: var(--ss-transition);
+    display: flex;
+    align-items: center;
+}
+
+.info-box:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ss-shadow-md) !important;
+}
+
+.info-box-icon {
+    border-radius: var(--ss-radius-sm) !important;
+    height: 54px !important;
+    width: 54px !important;
+    line-height: 54px !important;
+    font-size: 24px !important;
+    margin: 15px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.info-box-content {
+    padding: 10px 15px !important;
+}
+
+.info-box-text {
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    color: var(--ss-text-muted) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.info-box-number {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    color: var(--ss-text-main) !important;
+    margin-top: 2px;
+}
+
+/* ==========================================================================
+   Modern Form Controls & Inputs
+   ========================================================================== */
+.form-control, input[type="text"], input[type="password"], input[type="email"], select, textarea {
+    height: 40px;
+    border: 1.5px solid var(--ss-border) !important;
+    border-radius: var(--ss-radius-sm) !important;
+    background-color: #ffffff !important;
+    color: var(--ss-text-main) !important;
+    padding: 8px 14px !important;
+    font-size: 13.5px !important;
+    box-shadow: var(--ss-shadow-xs) !important;
+    transition: var(--ss-transition) !important;
+}
+
+.form-control:focus, input:focus, select:focus, textarea:focus {
+    border-color: var(--ss-primary) !important;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+    outline: none !important;
+}
+
+label {
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    color: var(--ss-text-main) !important;
+    margin-bottom: 6px !important;
+}
+
+/* ==========================================================================
+   Modern Buttons
+   ========================================================================== */
+.btn {
+    font-family: var(--ss-font) !important;
+    font-weight: 600 !important;
+    font-size: 13.5px !important;
+    border-radius: var(--ss-radius-sm) !important;
+    padding: 8px 16px !important;
+    border: 1px solid transparent !important;
+    box-shadow: var(--ss-shadow-xs) !important;
+    transition: var(--ss-transition) !important;
+    letter-spacing: -0.01em;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--ss-shadow) !important;
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background-color: var(--ss-primary) !important;
+    border-color: var(--ss-primary) !important;
+    color: #ffffff !important;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--ss-primary-hover) !important;
+    border-color: var(--ss-primary-hover) !important;
+}
+
+.btn-success {
+    background-color: var(--ss-success) !important;
+    border-color: var(--ss-success) !important;
+    color: #ffffff !important;
+}
+
+.btn-danger {
+    background-color: var(--ss-danger) !important;
+    border-color: var(--ss-danger) !important;
+    color: #ffffff !important;
+}
+
+.btn-warning {
+    background-color: var(--ss-warning) !important;
+    border-color: var(--ss-warning) !important;
+    color: #ffffff !important;
+}
+
+.btn-default {
+    background-color: #ffffff !important;
+    border-color: var(--ss-border) !important;
+    color: var(--ss-text-main) !important;
+}
+
+.btn-default:hover {
+    background-color: var(--ss-border-light) !important;
+    color: var(--ss-text-main) !important;
+}
+
+/* ==========================================================================
+   Clean Modern Tables
+   ========================================================================== */
+.table-responsive {
+    border: 1px solid var(--ss-border) !important;
+    border-radius: var(--ss-radius) !important;
+    background: #ffffff;
+    box-shadow: var(--ss-shadow-xs);
+    overflow: hidden;
+}
+
+.table {
+    margin-bottom: 0 !important;
+    background-color: #ffffff !important;
+}
+
+.table > thead > tr > th {
+    background-color: #f8fafc !important;
+    color: #475569 !important;
+    font-weight: 700 !important;
+    font-size: 12px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 14px 16px !important;
+    border-bottom: 1.5px solid var(--ss-border) !important;
+    border-top: none !important;
+}
+
+.table > tbody > tr > td {
+    padding: 12px 16px !important;
+    vertical-align: middle !important;
+    border-top: 1px solid var(--ss-border-light) !important;
+    color: var(--ss-text-main) !important;
+    font-size: 13.5px !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #fafafa !important;
+}
+
+.table-hover > tbody > tr:hover {
+    background-color: #f1f5f9 !important;
+    transition: background-color 0.15s ease;
+}
+
+/* Modern Badges & Labels */
+.label, .badge {
+    border-radius: var(--ss-radius-full) !important;
+    padding: 4px 10px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+    display: inline-block;
+}
+
+.label-success {
+    background-color: var(--ss-success-light) !important;
+    color: #065f46 !important;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.label-danger {
+    background-color: var(--ss-danger-light) !important;
+    color: #991b1b !important;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.label-warning {
+    background-color: var(--ss-warning-light) !important;
+    color: #92400e !important;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.label-info {
+    background-color: var(--ss-info-light) !important;
+    color: #075985 !important;
+    border: 1px solid rgba(14, 165, 233, 0.2);
+}
+
+/* ==========================================================================
+   Dark Mode Styles
+   ========================================================================== */
+body.dark {
+    --ss-bg: #0b0f19;
+    --ss-card-bg: #111827;
+    --ss-border: #1f2937;
+    --ss-border-light: #1f2937;
+    --ss-text-main: #f3f4f6;
+    --ss-text-muted: #9ca3af;
+}
+
+body.dark .main-header,
+body.dark .main-header .logo {
+    background-color: #111827 !important;
+    border-color: #1f2937 !important;
+}
+
+body.dark .main-sidebar {
+    background-color: #0b0f19 !important;
+    border-right-color: #1f2937 !important;
+}
+
+body.dark .box,
+body.dark .panel,
+body.dark .modal-content,
+body.dark .table-responsive,
+body.dark .table,
+body.dark .info-box {
+    background-color: #111827 !important;
+    border-color: #1f2937 !important;
+}
+
+body.dark .table > thead > tr > th {
+    background-color: #1f2937 !important;
+    color: #9ca3af !important;
+    border-color: #374151 !important;
+}
+
+body.dark .table > tbody > tr > td {
+    border-color: #1f2937 !important;
+    color: #e5e7eb !important;
+}
+
+body.dark .form-control,
+body.dark input,
+body.dark select,
+body.dark textarea {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #f3f4f6 !important;
+}
+
+body.dark .btn-default {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #e5e7eb !important;
+}

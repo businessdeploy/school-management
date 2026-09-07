@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # 1. Edge Reverse Proxy with Automated On-Demand SSL
+  caddy:
+    build:
+      context: ./caddy
+      dockerfile: Dockerfile
+    container_name: ss_ingress_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - MASTER_DOMAIN=localhost
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - smartschool_network
+    depends_on:
+      - master_dashboard
+
+  # 2. Central Network Control Plane & Fleet Orchestrator
+  master_dashboard:
+    build:
+      context: ./master-dashboard
+      dockerfile: Dockerfile
+    container_name: ss_master_dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - MASTER_ADMIN_USER=superadmin
+      - MASTER_ADMIN_PASS=MasterAdmin2026!
+      - MASTER_SSO_SECRET=ss-master-orchestrator-secret-key-2026
+      - FLEET_DB_HOST=fleet_db
+      - FLEET_DB_PORT=3306
+      - FLEET_DB_USER=root
+      - FLEET_DB_PASSWORD=smartschool_root_pass
+      - MASTER_DB_NAME=ss_master_orchestrator
+      - DOCKER_NETWORK=smartschool_network
+      - TENANT_DOCKER_IMAGE=smartschool-base:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./tenants:/var/www/html/tenants
+      - ./master-dashboard/data:/app/data
+      - .:/var/www/smart_school_src:ro
+    networks:
+      - smartschool_network
+    depends_on:
+      fleet_db:
+        condition: service_healthy
+
+  # 3. High-Performance Fleet MariaDB Server (Hosts isolated tenant databases)
+  fleet_db:
+    image: mariadb:10.11
+    container_name: ss_fleet_db
+    restart: unless-stopped
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=500
+      --innodb_buffer_pool_size=1G
+      --innodb_log_file_size=256M
+    environment:
+      MYSQL_ROOT_PASSWORD: smartschool_root_pass
+      MYSQL_DATABASE: ss_master_orchestrator
+    volumes:
+      - mariadb_fleet_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - smartschool_network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # 4. Fleet Database Administration (Optional)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: ss_fleet_pma
+    restart: unless-stopped
+    environment:
+      PMA_HOST: fleet_db
+      PMA_PORT: 3306
+    ports:
+      - "8081:80"
+    networks:
+      - smartschool_network
+    depends_on:
+      - fleet_db
+
+networks:
+  smartschool_network:
+    name: smartschool_network
+    driver: bridge
+
+volumes:
+  mariadb_fleet_data:
+  caddy_data:
+  caddy_config:

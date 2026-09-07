@@ -1,0 +1,34 @@
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Node / Master Dashboard
+master-dashboard/node_modules/
+master-dashboard/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Tenant Storage & Dynamic Data
+tenants/*
+!tenants/.gitkeep
+master-dashboard/data/master-store.json
+
+# Temporary & Cache Files
+temp/*
+!temp/index.html
+backup/*
+!backup/index.html
+uploads/*
+!uploads/index.html
+!uploads/school_content/
+!uploads/staff_images/
+!uploads/student_images/
+
+# Environment secrets
+.env
+.env.local
+.env.production
