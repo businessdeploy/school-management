@@ -140,27 +140,60 @@ router.post('/create', async (req: Request, res: Response) => {
 });
 
 // 4. School Details
-router.get('/:id', async (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
-  if (!school) return res.redirect('/schools');
+router.get('/:id', async (req: Request, res: Response, next: any) => {
+  try {
+    const school = MasterDb.getSchoolById(req.params.id);
+    if (!school) return res.redirect('/schools');
 
-  const client = MasterDb.getClients().find((c) => c.id === school.clientId);
-  const network = MasterDb.getNetworks().find((n) => n.id === school.networkId);
-  const containerStatus = await DockerService.checkContainerStatus(school.containerName);
-  const logs = await DockerService.getLogs(school.containerName, 50);
+    const client = MasterDb.getClients().find((c) => c.id === school.clientId) || {
+      id: school.clientId || 'client_default',
+      name: 'Direct Client',
+      organization: school.name,
+      email: school.adminEmail,
+      phone: '',
+      plan: 'Starter' as const,
+      status: 'active' as const,
+      createdAt: school.createdAt,
+    };
 
-  // Generate 1-click SSO link
-  const ssoUrl = `/schools/${school.id}/sso-login`;
+    const network = MasterDb.getNetworks().find((n) => n.id === school.networkId) || {
+      id: school.networkId || 'net_default',
+      name: 'Primary Network Fleet',
+      rootDomain: 'localhost',
+      isDefault: true,
+      createdAt: school.createdAt,
+    };
 
-  res.render('school-detail', {
-    pageTitle: `${school.name} - Fleet Overview`,
-    school,
-    client,
-    network,
-    containerStatus,
-    logs,
-    ssoUrl,
-  });
+    let containerStatus: 'running' | 'stopped' | 'not_found' = 'stopped';
+    try {
+      containerStatus = await DockerService.checkContainerStatus(school.containerName);
+    } catch (e: any) {
+      containerStatus = 'not_found';
+    }
+
+    let logs = 'No logs recorded.';
+    try {
+      logs = await DockerService.getLogs(school.containerName, 50);
+    } catch (e: any) {
+      logs = `Container logs offline: ${e.message}`;
+    }
+
+    // Generate 1-click SSO link
+    const ssoUrl = `/schools/${school.id}/sso-login`;
+
+    res.render('school-detail', {
+      pageTitle: `${school.name} - Fleet Overview`,
+      school,
+      client,
+      network,
+      containerStatus,
+      logs: typeof logs === 'string' ? logs : String(logs),
+      ssoUrl,
+    });
+  } catch (err: any) {
+    console.error(`[School Detail Error for ${req.params.id}]:`, err);
+    next(err);
+  }
 });
 
 // 5. 1-Click Master Admin SSO Login (Direct Impersonation)

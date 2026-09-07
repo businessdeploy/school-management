@@ -96,6 +96,36 @@ app.use((req: Request, res: Response) => {
   `);
 });
 
+// Global Error Handler Middleware
+app.use((err: any, req: Request, res: Response, next: any) => {
+  console.error('[MASTER CONTROL PLANE ERROR]:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(500).send(`
+    <!DOCTYPE html>
+    <html class="dark">
+      <head>
+        <title>Control Plane Error</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+      </head>
+      <body class="bg-slate-950 text-slate-100 p-8 flex items-center justify-center min-h-screen">
+        <div class="max-w-2xl w-full bg-slate-900 border border-rose-500/30 rounded-2xl p-6 shadow-2xl">
+          <div class="flex items-center space-x-3 mb-4">
+            <span class="text-2xl">⚠️</span>
+            <h2 class="text-lg font-bold text-rose-400">Master Orchestrator Error</h2>
+          </div>
+          <p class="text-sm text-slate-300 mb-3 font-mono bg-slate-950 p-3 rounded-lg border border-slate-800">${err.message || err}</p>
+          <pre class="bg-slate-950 p-4 rounded-xl text-xs font-mono text-slate-400 overflow-x-auto border border-slate-800 max-h-64">${err.stack || 'No stack trace available'}</pre>
+          <div class="mt-6">
+            <a href="/schools" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-semibold text-white transition">← Return to Schools</a>
+          </div>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
 // Start Server
 app.listen(config.port, config.host, () => {
   console.log(`=======================================================`);

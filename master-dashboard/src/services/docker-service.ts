@@ -29,10 +29,9 @@ export class DockerService {
     try {
       const container = this.docker.getContainer(containerName);
       const data = await container.inspect();
-      return data.State.Running ? 'running' : 'stopped';
+      return data?.State?.Running ? 'running' : 'stopped';
     } catch (err: any) {
-      if (err.statusCode === 404) return 'not_found';
-      return 'stopped';
+      return 'not_found';
     }
   }
 
@@ -151,15 +150,31 @@ export class DockerService {
 
     try {
       const container = this.docker.getContainer(containerName);
+      try {
+        const inspect = await container.inspect();
+        if (!inspect || !inspect.State) {
+          return `Container '${containerName}' is offline or initializing.`;
+        }
+      } catch (inspectErr: any) {
+        return `Container '${containerName}' has not been deployed to Docker engine yet or is stopped.`;
+      }
+
       const logs = await container.logs({
         stdout: true,
         stderr: true,
         tail,
         timestamps: true,
+        follow: false,
       });
-      return logs.toString('utf-8');
-    } catch (err) {
-      return `Error retrieving logs for ${containerName}: ${err}`;
+
+      if (Buffer.isBuffer(logs)) {
+        return logs.toString('utf-8');
+      } else if (typeof logs === 'string') {
+        return logs;
+      }
+      return 'Container is running (no output recorded yet).';
+    } catch (err: any) {
+      return `Container logs unavailable: ${err.message || err}`;
     }
   }
 }
