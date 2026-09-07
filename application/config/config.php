@@ -23,6 +23,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
   | If you need to allow multiple domains, remember that this file is still
   | a PHP script and you can easily do that on your own.
   |
+ */
 $env_base_url = getenv('BASE_URL');
 if (!empty($env_base_url)) {
     $config['base_url'] = rtrim($env_base_url, '/') . '/';

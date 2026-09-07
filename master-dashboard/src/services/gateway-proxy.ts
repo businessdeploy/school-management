@@ -11,6 +11,17 @@ export class GatewayProxy {
   });
 
   public static init() {
+    this.proxy.on('proxyRes', (proxyRes, req: any) => {
+      if (proxyRes.headers && proxyRes.headers.location) {
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+        const proto = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+        proxyRes.headers.location = proxyRes.headers.location.replace(
+          /https?:\/\/127\.0\.0\.1:8080/g,
+          `${proto}://${host}`
+        );
+      }
+    });
+
     this.proxy.on('error', (err, req, res: any) => {
       console.error('[GatewayProxy] Proxy error:', err.message);
       if (res && res.writeHead && !res.headersSent) {

@@ -28,7 +28,9 @@ RUN echo "memory_limit = 512M\nupload_max_filesize = 100M\npost_max_size = 100M\
 # Copy Smart School PHP Application
 WORKDIR /var/www/html
 COPY . /var/www/html
-RUN chown -R www-data:www-data /var/www/html \
+RUN rm -f /var/www/html/index.html \
+    && rm -rf /var/www/html/application/controllers/install \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/uploads /var/www/html/application/config 2>/dev/null || true
 
 # Build Master Dashboard (TypeScript -> JavaScript)
