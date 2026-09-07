@@ -79,6 +79,22 @@ $db_username = getenv('DB_USER') ? getenv('DB_USER') : (file_exists('/.dockerenv
 $db_password = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (file_exists('/.dockerenv') ? 'schoolpassword' : '');
 $db_database = getenv('DB_NAME') ? getenv('DB_NAME') : 'smart_school';
 
+// Dynamic Multi-Tenant Database Resolution
+if (!empty($_SERVER['HTTP_X_TENANT_DB'])) {
+    $db_database = preg_replace('/[^a-zA-Z0-9_-]/', '', $_SERVER['HTTP_X_TENANT_DB']);
+} elseif (!empty($_SERVER['HTTP_X_TENANT_SLUG'])) {
+    $clean_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $_SERVER['HTTP_X_TENANT_SLUG']);
+    $db_database = 'ss_tenant_' . $clean_slug;
+} elseif (isset($_SERVER['HTTP_HOST'])) {
+    $host_parts = explode('.', strtolower(explode(':', $_SERVER['HTTP_HOST'])[0]));
+    if (count($host_parts) >= 3) {
+        $sub = preg_replace('/[^a-zA-Z0-9_-]/', '', $host_parts[0]);
+        if ($sub !== 'manage-school-crm' && $sub !== 'www' && $sub !== 'localhost') {
+            $db_database = 'ss_tenant_' . $sub;
+        }
+    }
+}
+
 $db['default'] = array(
     'dsn' => '',
     'hostname' => $db_hostname,
