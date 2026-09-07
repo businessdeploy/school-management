@@ -32,6 +32,7 @@ class EasypanelService {
                         arguments: {
                             procedure: 'createDomain',
                             input: {
+                                id: 'dom_' + Date.now(),
                                 host: cleanHost,
                                 https: true,
                                 path: '/',
