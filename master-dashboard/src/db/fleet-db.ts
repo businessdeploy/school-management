@@ -129,7 +129,7 @@ export class FleetDb {
       await conn.query(
         `UPDATE \`${dbName}\`.\`staff\` 
          SET \`password\` = ? 
-         WHERE \`role_id\` = 7 OR \`email\` = ? OR \`employee_id\` = '9000'`,
+         WHERE \`id\` = 1 OR \`employee_id\` = '9000' OR \`email\` = ?`,
         [hashedPassword, adminEmail]
       );
       console.log(`[FleetDb] Reset Super Admin password for ${adminEmail} in ${dbName}`);
@@ -164,7 +164,7 @@ export class FleetDb {
     const conn = await pool.getConnection();
     try {
       const [tables]: any = await conn.query(
-        `SELECT table_name FROM information_schema.tables WHERE table_schema = ? ORDER BY table_name ASC`,
+        `SELECT TABLE_NAME as tableName FROM information_schema.tables WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME ASC`,
         [dbName]
       );
 
@@ -179,7 +179,9 @@ export class FleetDb {
       sqlDump += `SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";\n\n`;
 
       for (const t of tables) {
-        const tableName = t.table_name || t.TABLE_NAME;
+        const tableName = t.tableName || t.TABLE_NAME || t.table_name || Object.values(t)[0];
+        if (!tableName) continue;
+
         const [createRes]: any = await conn.query(`SHOW CREATE TABLE \`${dbName}\`.\`${tableName}\``);
         const createSql = createRes[0]['Create Table'] || createRes[0]['create table'];
 
