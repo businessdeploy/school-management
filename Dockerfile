@@ -27,5 +27,7 @@ RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/smartschool.ini \
     && echo "allow_url_fopen = On" >> /usr/local/etc/php/conf.d/smartschool.ini
 
 WORKDIR /var/www/html
+COPY . /var/www/html
+RUN chown -R www-data:www-data /var/www/html
 
 EXPOSE 80
