@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 
@@ -32,8 +33,13 @@ export const config = {
   
   // Smart School Codebase Path
   appRoot: path.resolve(__dirname, '../../..'),
-  sqlSeedPath: path.resolve(__dirname, '../../../application/controllers/install/database.sql'),
-  tenantsStoragePath: path.resolve(__dirname, '../../../tenants'),
+  sqlSeedPath: process.env.SQL_SEED_PATH ||
+    (fs.existsSync(path.resolve(__dirname, 'database.sql'))
+      ? path.resolve(__dirname, 'database.sql')
+      : (fs.existsSync(path.resolve(__dirname, '../src/database.sql'))
+        ? path.resolve(__dirname, '../src/database.sql')
+        : path.resolve(__dirname, '../../../application/controllers/install/database.sql'))),
+  tenantsStoragePath: process.env.TENANTS_STORAGE_PATH || path.resolve(__dirname, '../../../tenants'),
   
   // Base Docker Image Name for School Tenants
   tenantDockerImage: process.env.TENANT_DOCKER_IMAGE || 'smartschool-base:latest',

@@ -7,6 +7,7 @@ RUN npm install
 COPY src/ ./src/
 RUN npm run build
 RUN cp -r src/views dist/views
+RUN cp src/database.sql dist/database.sql 2>/dev/null || true
 
 FROM node:22-alpine AS runner
 
