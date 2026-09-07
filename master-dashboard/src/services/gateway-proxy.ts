@@ -107,14 +107,20 @@ export class GatewayProxy {
       `);
     }
 
+    // Sanitize incoming headers to prevent tenant spoofing
+    delete req.headers['x-tenant-slug'];
+    delete req.headers['x-tenant-db'];
+    delete req.headers['x-tenant-id'];
+
     // 3. Active Tenant: Forward to internal PHP backend (port 8080) or dedicated container
     const target = process.env.PHP_BACKEND_URL || 'http://127.0.0.1:8080';
     req.headers['x-tenant-slug'] = school.slug;
     req.headers['x-tenant-db'] = school.dbName;
+    req.headers['x-tenant-id'] = String(school.id);
     req.headers['x-forwarded-host'] = req.headers.host;
     req.headers['x-forwarded-proto'] = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
 
-    return GatewayProxy.proxy.web(req, res, { target }, (err) => {
+    return GatewayProxy.proxy.web(req, res, { target, proxyTimeout: 30000, timeout: 30000 }, (err) => {
       console.warn(`[GatewayProxy] Proxy to ${target} failed for ${school.slug}:`, err.message);
       // Fallback if PHP backend is not yet ready
       const ssoUrl = SsoService.getSsoRedirectUrl(req.headers.host || school.subdomain, school.slug, 1);

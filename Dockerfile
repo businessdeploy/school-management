@@ -16,11 +16,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Configure Apache: internal port 8080, mod_rewrite, .htaccess overrides (cached layer)
+# 2. Configure Apache: internal port 8080, mod_rewrite, mpm_prefork tuning, .htaccess overrides (cached layer)
 RUN sed -i 's/Listen 80$/Listen 8080/' /etc/apache2/ports.conf \
     && sed -i 's/<VirtualHost \*:80>/<VirtualHost \*:8080>/' /etc/apache2/sites-available/000-default.conf \
     && a2enmod rewrite \
-    && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
+    && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf \
+    && echo "<IfModule mpm_prefork_module>\n    StartServers             5\n    MinSpareServers          5\n    MaxSpareServers         10\n    MaxRequestWorkers       80\n    MaxConnectionsPerChild 1000\n</IfModule>" > /etc/apache2/mods-available/mpm_prefork.conf
 
 # 3. PHP configuration (cached layer)
 RUN echo "memory_limit = 512M\nupload_max_filesize = 100M\npost_max_size = 100M\nmax_execution_time = 300\ndate.timezone = UTC\nallow_url_fopen = On" > /etc/php/8.2/apache2/conf.d/smartschool.ini

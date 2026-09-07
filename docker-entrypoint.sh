@@ -8,6 +8,7 @@ sed -i 's/<VirtualHost \*:80>/<VirtualHost \*:8080>/' /etc/apache2/sites-availab
 echo "[DockerEntrypoint] Starting Apache HTTP server..."
 service apache2 start || apache2ctl start || true
 
-echo "[DockerEntrypoint] Starting Smart School Master Orchestrator on port 3000..."
+echo "[DockerEntrypoint] Starting Prime School Fleet Master Orchestrator on port 3000..."
+export NODE_OPTIONS="--max-old-space-size=1024"
 cd /app
 exec node dist/index.js

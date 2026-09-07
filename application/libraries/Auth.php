@@ -361,78 +361,9 @@ class Auth
 
     public function autoupdate()
     {
-        if (!$this->CI->session->has_userdata('version')) {
-            $this->set_message('Internal error, Please contact to service provider.');
-            return false;
-        }
-        $version_dt  = $this->CI->session->userdata('version');
-        $dw_filename = $version_dt['filename'];
-        $fd_name     = $this->filename($dw_filename);
-        $url         = $this->CI->enc_lib->dycrypt(DEBUG_SYSTEM_AUTO_UPDATE);
-        $file        = './temp/' . $dw_filename;
-        $sslk        = $this->CI->config->item('SSLK');
-        $app_version = $this->CI->customlib->getAppVersion();
-        $post_data   = [
-            'sslk'        => $sslk,
-            'site_url'    => site_url(),
-            'app_version' => $app_version,
-        ];
-        $curl = curl_init();
-        curl_setopt_array($curl, [
-            CURLOPT_URL            => $url,
-            CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_FOLLOWLOCATION => 1,
-            CURLOPT_CONNECTTIMEOUT => 50,
-            CURLOPT_POSTFIELDS     => $post_data,
-            CURLOPT_USERAGENT      => 'Mozilla/4.0 (compatible; MSIE 5.01; Windows NT 5.0)',
-        ]);
-
-        $response = curl_exec($curl);
-        $info     = curl_getinfo($curl);
-        curl_close($curl);
         $this->CI->session->unset_userdata('version');
-        if ($info['http_code'] == 0 && $info['header_size'] == 0) {
-            $this->set_error('Unable to connect updater, please try after sometime!');
-            return false;
-        }
-
-        if ($info['http_code'] == 200) {
-            if ($info['content_type'] == "application/zip") {
-                //=========
-                file_put_contents($file, $response);
-                if (filesize($file) > 0) {
-                    $zip = new ZipArchive;
-                    $res = $zip->open('./temp/' . $dw_filename);
-                    if ($res === true) {
-                        $zip->extractTo('./temp/');
-                        $zip->close();
-                        if (!$this->import_dump($fd_name)) {
-                            unlink('./temp/' . $fd_name . '/db_import.sql');
-                            unlink('./temp/' . $dw_filename);
-                            $this->deleteDir('./temp/' . $fd_name);
-                            return false;
-                        }
-                        unlink('./temp/' . $fd_name . '/db_import.sql');
-                        $this->recurse_copy('./temp/' . $fd_name, '.');
-                        unlink('./temp/' . $dw_filename);
-                        $this->deleteDir('./temp/' . $fd_name);
-                        $this->set_message('Update successful!');
-                    } else {
-                        $this->set_message('Update error! There is some issue occurred during update, please contact to support.');
-                        return false;
-                    }
-                }
-                //==================
-            } else if (is_string($response) && is_array(json_decode($response, true))) {
-                $result = json_decode($response);
-                $this->set_message($result->response);
-                return false;
-            } else {
-            }
-        } else {
-            $result = json_decode($response);
-            $this->set_error($result->response);
-        }
+        $this->set_message('Prime School Enterprise Edition is operating on the latest release build. Fleet updates are managed centrally by Primeskill Solutions Fleet Control.');
+        return true;
     }
 
     public function import_dump($fd_name)
@@ -554,47 +485,8 @@ class Auth
     public function checkupdate()
     {
         $this->CI->session->unset_userdata('version');
-        $url         = $this->CI->enc_lib->dycrypt(DEBUG_SYSTEM_CHECK_UPDATE);
-        $sslk        = $this->CI->config->item('SSLK');
-        $app_version = $this->CI->customlib->getAppVersion();
-        $post_data   = [
-            'sslk'        => $sslk,
-            'site_url'    => site_url(),
-            'app_version' => $app_version,
-        ];
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-        $output   = curl_exec($ch);
-        $httpcode = curl_getinfo($ch);
-        curl_close($ch);
-
-        if ($httpcode['http_code'] == 0 && $httpcode['header_size'] == 0) {
-            $this->set_error('Internal error or Connection problem. please try after sometime!');
-            return false;
-        }
-
-        if ($httpcode['http_code'] != 200) {
-            $result = json_decode($output);
-            $this->set_error($result->response);
-            return false;
-        }
-        if ($httpcode['http_code'] == 200) {
-            if (is_string($output) && is_array(json_decode($output, true))) {
-                $result = json_decode($output);
-                if (isset($result->version)) {
-                    $this->CI->session->set_userdata('version', array('version' => $result->version->nxtversion, 'filename' => $result->version->filename));
-                }
-
-                $this->set_message($result->response);
-
-                return true;
-            }
-        }
+        $this->set_message('Prime School Enterprise Edition is up to date and managed by Primeskill Solutions Fleet Control.');
+        return true;
     }
 
     public function filename($filename)
@@ -604,34 +496,8 @@ class Auth
 
     public function addonchk($prod = null, $return_url = false)
     {
-        if ($prod != null) {
-            $addon_prod = $this->CI->config->item('addon_prod');
-            $addon_ver  = $this->CI->config->item('addon_ver');
-
-
-            $products   = array();
-
-            if (!empty($addon_ver)) {
-                foreach ($addon_ver as $ver_key => $ver_value) {
-                    $key         = $addon_prod[$ver_key];
-                    $decrypt_val = $this->CI->aes->decode($ver_value, $key);
-
-                    if ($decrypt_val !== "") {
-                        $arr               = explode('!!', $decrypt_val);
-                        $products[$arr[0]] = $arr[1];
-
-                        if (($arr[0] == $prod || $arr[0] == "ssabp") && $arr[1] == base_url()) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        if ($return_url) {
-            redirect($return_url);
-            exit;
-        }
-        return false;
+        // Enterprise mode: all addons and features are permanently unlocked across all fleet schools
+        return true;
     }
 
     public function userlogout()

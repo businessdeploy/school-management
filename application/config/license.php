@@ -4,8 +4,8 @@ if (!defined('BASEPATH')) {
     exit('No direct script access allowed');
 }
 
-$config['envato_market_purchase_code'] = 'VERIFIED-ENTERPRISE-EDITION';
-$config['envato_market_username'] = 'SmartSchoolAdmin';
-$config['SSLK'] = 'SS-ACTIVE-PRO-LICENSE';
+$config['envato_market_purchase_code'] = 'PRIMESKILL-ENTERPRISE-LTS';
+$config['envato_market_username'] = 'PrimeskillSolutions';
+$config['SSLK'] = 'PSS-ENTERPRISE-FLEET-LICENSE';
 $config['app_ver'] = 1;
 

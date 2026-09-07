@@ -1,11 +1,35 @@
 <%- include('partials/header') %>
 
-<div class="flex items-center justify-between mb-8">
+<!-- Flash Notifications -->
+<% if (typeof success !== 'undefined' && success) { %>
+  <div class="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center justify-between shadow-lg shadow-emerald-500/5">
+    <div class="flex items-center space-x-2">
+      <span class="text-base">✅</span>
+      <span class="font-medium"><%= success %></span>
+    </div>
+    <a href="/schools" class="text-slate-400 hover:text-white text-[11px]">Dismiss</a>
+  </div>
+<% } %>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between shadow-lg shadow-rose-500/5">
+    <div class="flex items-center space-x-2">
+      <span class="text-base">⚠️</span>
+      <span class="font-medium"><%= error %></span>
+    </div>
+    <a href="/schools" class="text-slate-400 hover:text-white text-[11px]">Dismiss</a>
+  </div>
+<% } %>
+
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
   <div>
     <h1 class="text-2xl font-extrabold text-white tracking-tight">School Fleet Directory</h1>
-    <p class="text-slate-400 text-sm mt-1">Manage all isolated school tenants, domains, and containers across networks.</p>
+    <p class="text-slate-400 text-sm mt-1">
+      Manage isolated school tenants, domains, and containers. Live cluster host: 
+      <code class="text-indigo-400 font-mono text-xs bg-slate-900 px-2 py-0.5 rounded border border-slate-800"><%= typeof currentHost !== 'undefined' ? currentHost : 'Active' %></code>
+    </p>
   </div>
-  <a href="/schools/new" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/25 transition flex items-center space-x-2">
+  <a href="/schools/new" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/25 transition flex items-center space-x-2 self-start sm:self-auto">
     <span>✨</span>
     <span>Onboard New School</span>
   </a>
@@ -18,10 +42,10 @@
       <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
         <tr>
           <th class="px-6 py-4">School & Slug</th>
-          <th class="px-6 py-4">Network & Domain</th>
+          <th class="px-6 py-4">Live Domain & URL</th>
           <th class="px-6 py-4">Database</th>
           <th class="px-6 py-4">Status</th>
-          <th class="px-6 py-4">Storage Quota</th>
+          <th class="px-6 py-4">Quota</th>
           <th class="px-6 py-4 text-right">Actions</th>
         </tr>
       </thead>
@@ -41,11 +65,15 @@
             </td>
 
             <td class="px-6 py-4 font-mono text-slate-300">
-              <div><%= s.subdomain %></div>
+              <a href="https://<%= s.customDomain || s.subdomain %>" target="_blank" class="hover:text-emerald-400 text-slate-200 flex items-center space-x-1 font-semibold" title="Open School Portal in New Tab">
+                <span><%= s.subdomain %></span>
+                <span class="text-[10px] text-slate-500">↗</span>
+              </a>
               <% if (s.customDomain) { %>
-                <div class="text-emerald-400 text-[11px] flex items-center space-x-1 mt-0.5">
+                <div class="text-emerald-400 text-[11px] flex items-center space-x-1 mt-0.5 font-sans">
                   <span>🔗</span>
-                  <span><%= s.customDomain %></span>
+                  <span class="font-mono"><%= s.customDomain %></span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">Custom</span>
                 </div>
               <% } %>
             </td>
@@ -71,7 +99,8 @@
             </td>
 
             <td class="px-6 py-4 text-slate-300">
-              <%= s.storageQuotaGb %> GB
+              <div><%= s.storageQuotaGb %> GB</div>
+              <div class="text-[11px] text-slate-500"><%= s.maxStudents %> students</div>
             </td>
 
             <td class="px-6 py-4 text-right">
@@ -81,6 +110,11 @@
                   <span>⚡</span>
                   <span>Login</span>
                 </a>
+                <!-- SQL Backup Download -->
+                <a href="/schools/<%= s.id %>/backup-db" title="Download SQL Backup" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition">
+                  💾
+                </a>
+                <!-- Manage -->
                 <a href="/schools/<%= s.id %>" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition">
                   Manage
                 </a>
@@ -94,3 +128,4 @@
 </div>
 
 <%- include('partials/footer') %>
+

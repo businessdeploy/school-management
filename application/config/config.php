@@ -382,8 +382,23 @@ $config['encryption_key'] = 'c7e2b84931a9805d4f16b20e9854ad23';
   | except for 'cookie_prefix' and 'cookie_httponly', which are ignored here.
   |
  */
+$tenant_cookie_slug = 'fleet';
+if (!empty($_SERVER['HTTP_X_TENANT_SLUG'])) {
+    $tenant_cookie_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $_SERVER['HTTP_X_TENANT_SLUG']);
+} elseif (!empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+    $host_parts = explode('.', strtolower(explode(':', $_SERVER['HTTP_X_FORWARDED_HOST'])[0]));
+    if (count($host_parts) >= 3 && $host_parts[0] !== 'manage-school-crm' && $host_parts[0] !== 'www' && $host_parts[0] !== 'localhost') {
+        $tenant_cookie_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $host_parts[0]);
+    }
+} elseif (!empty($_SERVER['HTTP_HOST'])) {
+    $host_parts = explode('.', strtolower(explode(':', $_SERVER['HTTP_HOST'])[0]));
+    if (count($host_parts) >= 3 && $host_parts[0] !== 'manage-school-crm' && $host_parts[0] !== 'www' && $host_parts[0] !== 'localhost') {
+        $tenant_cookie_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $host_parts[0]);
+    }
+}
+
 $config['sess_driver'] = 'files';
-$config['sess_cookie_name'] = 'ci_session';
+$config['sess_cookie_name'] = 'ps_' . $tenant_cookie_slug . '_sess';
 $config['sess_samesite'] = 'Lax';
 $config['sess_expiration'] = 7200;
 $config['sess_save_path'] = sys_get_temp_dir();
@@ -406,11 +421,11 @@ $config['sess_regenerate_destroy'] = FALSE;
   |       'cookie_httponly') will also affect sessions.
   |
  */
-$config['cookie_prefix']	= '';
+$config['cookie_prefix']	= 'ps_' . $tenant_cookie_slug . '_';
 $config['cookie_domain']	= '';
 $config['cookie_path']		= '/';
 $config['cookie_secure']	= FALSE;
-$config['cookie_httponly'] 	= FALSE;
+$config['cookie_httponly'] 	= TRUE;
 $config['cookie_samesite'] 	= 'Lax';	
 /*
   |--------------------------------------------------------------------------

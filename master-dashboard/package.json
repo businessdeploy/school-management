@@ -1,7 +1,7 @@
 {
-  "name": "smart-school-master-dashboard",
+  "name": "prime-school-master-dashboard",
   "version": "1.0.0",
-  "description": "Central Network Control Plane & Fleet Orchestrator for Smart School SaaS",
+  "description": "Central Network Control Plane & Fleet Orchestrator for Prime School SaaS by Primeskill Solutions Private Limited",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
