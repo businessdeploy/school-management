@@ -61,22 +61,21 @@ const viewsPath = fs_1.default.existsSync(path_1.default.join(__dirname, 'views'
     : path_1.default.resolve(__dirname, '../src/views');
 app.set('views', viewsPath);
 app.set('view engine', 'ejs');
-// 3. Static Assets & Body Parsers
+// 3. Caddy On-Demand TLS Validation (Must be public before gateway check)
+app.use('/api/v1/domains', caddy_routes_1.default);
+// 4. Intelligent Tenant Gateway Router
+app.use(gateway_proxy_1.GatewayProxy.handleTenantRouting);
+// 5. Static Assets & Body Parsers
 app.use(express_1.default.static(path_1.default.join(__dirname, '../public')));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
-// 4. Session Middleware
+// 6. Session Middleware
 app.use((0, express_session_1.default)({
     secret: config_1.config.sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: { secure: false, maxAge: 86400000 }, // 24 hours
 }));
-// 5. Caddy On-Demand TLS Validation (Must be public before gateway check)
-app.use('/api/v1/domains', caddy_routes_1.default);
-// 6. Intelligent Tenant Gateway Router
-// Inspects host header: if request is for a school instance, routes to container or suspension page
-app.use(gateway_proxy_1.GatewayProxy.handleTenantRouting);
 // 7. Master Auth Routes
 app.use('/auth', auth_routes_1.default);
 // 8. Master Dashboard Protected Routes
