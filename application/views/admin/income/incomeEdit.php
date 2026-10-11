@@ -5,7 +5,7 @@ $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
 <div class="content-wrapper">
     <!-- Content Header (Page header) -->
     <section class="content-header">
-        <h1><i class="fa fa-usd"></i> <?php echo $this->lang->line('income'); ?></h1>
+        <h1><i class="fa fa-inr"></i> <?php echo $this->lang->line('income'); ?></h1>
     </section>
 
     <!-- Main content -->

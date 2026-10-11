@@ -11,7 +11,7 @@
 <div class="content-wrapper" style="min-height: 946px;">
     <!-- Content Header (Page header) -->
     <section class="content-header">
-        <h1><i class="fa fa-usd"></i> <?php echo $this->lang->line('income'); ?></h1>
+        <h1><i class="fa fa-inr"></i> <?php echo $this->lang->line('income'); ?></h1>
     </section>
     <!-- Main content -->
     <section class="content">
