@@ -61,7 +61,7 @@ class SeedInstaller {
                 : `https://${options.domain}/`;
             const timezone = options.timezone || 'UTC';
             const currency = options.currencySymbol || '$';
-            await fleet_db_1.FleetDb.executeQuery(dbName, `UPDATE \`sch_settings\` SET \`name\` = ?, \`email\` = ?, \`base_url\` = ?, \`currency_symbol\` = ?, \`timezone\` = ? WHERE \`id\` = 1`, [options.name, options.adminEmail, baseUrl, currency, timezone]);
+            await fleet_db_1.FleetDb.executeQuery(dbName, `UPDATE \`sch_settings\` SET \`name\` = ?, \`email\` = ?, \`base_url\` = ?, \`currency_symbol\` = ?, \`timezone\` = ?, \`admin_logo\` = '1.svg', \`admin_small_logo\` = '1.svg', \`image\` = '1.svg', \`app_logo\` = '1.svg' WHERE \`id\` = 1`, [options.name, options.adminEmail, baseUrl, currency, timezone]);
         }
         catch (err) {
             console.error(`[Provisioner] Error updating sch_settings in ${dbName}:`, err);

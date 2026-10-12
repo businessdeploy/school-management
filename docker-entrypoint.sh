@@ -11,10 +11,13 @@ if [ -d "/var/www/html/tenants" ]; then
     echo "[DockerEntrypoint] Syncing Prime School brand assets to tenant storage..."
     for t_dir in /var/www/html/tenants/*; do
         if [ -d "$t_dir/uploads/school_content/admin_logo" ]; then
-            cp -f /var/www/html/uploads/school_content/admin_logo/1.png "$t_dir/uploads/school_content/admin_logo/1.png" 2>/dev/null || true
+            cp -f /var/www/html/uploads/school_content/admin_logo/* "$t_dir/uploads/school_content/admin_logo/" 2>/dev/null || true
         fi
         if [ -d "$t_dir/uploads/school_content/admin_small_logo" ]; then
-            cp -f /var/www/html/uploads/school_content/admin_small_logo/1.png "$t_dir/uploads/school_content/admin_small_logo/1.png" 2>/dev/null || true
+            cp -f /var/www/html/uploads/school_content/admin_small_logo/* "$t_dir/uploads/school_content/admin_small_logo/" 2>/dev/null || true
+        fi
+        if [ -d "$t_dir/uploads/school_content/logo" ]; then
+            cp -f /var/www/html/uploads/school_content/logo/* "$t_dir/uploads/school_content/logo/" 2>/dev/null || true
         fi
     done
 fi

@@ -245,13 +245,27 @@ class Setting_model extends MY_Model {
     public function getAdminlogo() {
         $query = $this->db->select('admin_logo')->get('sch_settings');
         $logo = $query->row_array();
-        return $logo['admin_logo'];
+        $admin_logo = !empty($logo['admin_logo']) ? $logo['admin_logo'] : '1.svg';
+        if (substr($admin_logo, -4) !== '.svg') {
+            $svg_file = pathinfo($admin_logo, PATHINFO_FILENAME) . '.svg';
+            if (file_exists(FCPATH . 'uploads/school_content/admin_logo/' . $svg_file) || file_exists('./uploads/school_content/admin_logo/' . $svg_file) || $admin_logo === '1.png') {
+                return $svg_file;
+            }
+        }
+        return $admin_logo;
     }
 
     public function getAdminsmalllogo() {
         $query = $this->db->select('admin_small_logo')->get('sch_settings');
         $logo = $query->row_array();
-        return  $logo['admin_small_logo'];
+        $admin_small_logo = !empty($logo['admin_small_logo']) ? $logo['admin_small_logo'] : '1.svg';
+        if (substr($admin_small_logo, -4) !== '.svg') {
+            $svg_file = pathinfo($admin_small_logo, PATHINFO_FILENAME) . '.svg';
+            if (file_exists(FCPATH . 'uploads/school_content/admin_small_logo/' . $svg_file) || file_exists('./uploads/school_content/admin_small_logo/' . $svg_file) || $admin_small_logo === '1.png') {
+                return $svg_file;
+            }
+        }
+        return $admin_small_logo;
     }
 
     public function get_appname() {
