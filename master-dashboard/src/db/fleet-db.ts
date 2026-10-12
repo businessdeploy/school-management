@@ -118,6 +118,9 @@ export class FleetDb {
 
   /**
    * Reset the Super Admin staff password in a tenant database.
+   *
+   * Resolves exactly one active super-admin (role 7) account by email and
+   * refuses to proceed when zero or multiple accounts match.
    */
   public static async resetAdminPassword(dbName: string, adminEmail: string, plainPassword: string): Promise<void> {
     const salt = bcrypt.genSaltSync(10);
@@ -126,12 +129,34 @@ export class FleetDb {
     const pool = this.getPool();
     const conn = await pool.getConnection();
     try {
-      await conn.query(
-        `UPDATE \`${dbName}\`.\`staff\` 
-         SET \`password\` = ? 
-         WHERE \`id\` = 1 OR \`employee_id\` = '9000' OR \`email\` = ?`,
-        [hashedPassword, adminEmail]
+      const [rows]: any = await conn.query(
+        `SELECT s.id, s.is_active
+         FROM \`${dbName}\`.\`staff\` s
+         INNER JOIN \`${dbName}\`.\`staff_roles\` sr ON sr.staff_id = s.id
+         INNER JOIN \`${dbName}\`.\`roles\` r ON r.id = sr.role_id
+         WHERE s.email = ? AND r.id = 7
+         LIMIT 2`,
+        [adminEmail]
       );
+
+      if (!Array.isArray(rows) || rows.length !== 1) {
+        throw new Error('Password reset requires exactly one active super-admin account');
+      }
+
+      const target = rows[0];
+      if (Number(target.is_active) !== 1) {
+        throw new Error('Super-admin account is inactive');
+      }
+
+      const [result]: any = await conn.query(
+        `UPDATE \`${dbName}\`.\`staff\` SET \`password\` = ? WHERE \`id\` = ?`,
+        [hashedPassword, target.id]
+      );
+
+      if (result?.affectedRows !== 1) {
+        throw new Error('Password reset did not affect exactly one account');
+      }
+
       console.log(`[FleetDb] Reset Super Admin password for ${adminEmail} in ${dbName}`);
     } finally {
       conn.release();

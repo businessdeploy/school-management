@@ -218,11 +218,11 @@ router.post('/:id/reset-password', async (req, res) => {
     }
     try {
         await fleet_db_1.FleetDb.resetAdminPassword(school.dbName, school.adminEmail, newPassword.trim());
-        res.redirect(`/schools/${school.id}?success=Super Admin password successfully reset to "${newPassword.trim()}".`);
+        res.redirect(`/schools/${school.id}?success=Super Admin password reset successfully.`);
     }
     catch (err) {
         console.error('[Password Reset Error]:', err);
-        res.redirect(`/schools/${school.id}?error=Failed to reset password: ${encodeURIComponent(err.message)}`);
+        res.redirect(`/schools/${school.id}?error=Failed to reset password.`);
     }
 });
 // 7. 1-Click Database SQL Backup Download

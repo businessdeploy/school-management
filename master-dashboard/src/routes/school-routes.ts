@@ -253,10 +253,10 @@ router.post('/:id/reset-password', async (req: Request, res: Response) => {
 
   try {
     await FleetDb.resetAdminPassword(school.dbName, school.adminEmail, newPassword.trim());
-    res.redirect(`/schools/${school.id}?success=Super Admin password successfully reset to "${newPassword.trim()}".`);
+    res.redirect(`/schools/${school.id}?success=Super Admin password reset successfully.`);
   } catch (err: any) {
     console.error('[Password Reset Error]:', err);
-    res.redirect(`/schools/${school.id}?error=Failed to reset password: ${encodeURIComponent(err.message)}`);
+    res.redirect(`/schools/${school.id}?error=Failed to reset password.`);
   }
 });
 
