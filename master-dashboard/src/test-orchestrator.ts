@@ -20,7 +20,12 @@ async function runTests() {
   // Test 2: Cryptographic SSO Token Generation and Signature Verification
   console.log('Test 2: Cryptographic 1-Click SSO Token Generation & Signature...');
   const testSlug = 'greenwood';
-  const token = SsoService.generateToken(testSlug, 1);
+  const token = SsoService.generateToken({
+    schoolSlug: testSlug,
+    staffId: 1,
+    operator: 'test-runner',
+    purpose: 'school_access',
+  });
   assert(token.includes('.'), 'Token must have <payload>.<signature> format');
 
   const [b64Payload, sig] = token.split('.');

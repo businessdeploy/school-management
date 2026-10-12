@@ -22,7 +22,12 @@ async function runTests() {
     // Test 2: Cryptographic SSO Token Generation and Signature Verification
     console.log('Test 2: Cryptographic 1-Click SSO Token Generation & Signature...');
     const testSlug = 'greenwood';
-    const token = sso_service_1.SsoService.generateToken(testSlug, 1);
+    const token = sso_service_1.SsoService.generateToken({
+        schoolSlug: testSlug,
+        staffId: 1,
+        operator: 'test-runner',
+        purpose: 'school_access',
+    });
     (0, assert_1.default)(token.includes('.'), 'Token must have <payload>.<signature> format');
     const [b64Payload, sig] = token.split('.');
     const expectedSig = crypto_1.default

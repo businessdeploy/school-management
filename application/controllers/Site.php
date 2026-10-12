@@ -1030,14 +1030,39 @@ class Site extends Public_Controller
         }
 
         $payload = json_decode(base64_decode($payload_b64), true);
-        if (!$payload || !isset($payload['timestamp']) || !isset($payload['staff_id'])) {
+        if (!$payload
+            || !isset($payload['timestamp'])
+            || !isset($payload['nonce'])
+            || !isset($payload['staff_id'])
+            || !isset($payload['school_slug'])
+            || !isset($payload['operator'])
+            || !isset($payload['purpose'])) {
             show_error("Invalid SSO Payload", 400);
             return;
         }
 
-        // Token lifetime: 120 seconds to prevent replay attacks
-        if (abs(time() - $payload['timestamp']) > 120) {
+        $now = time();
+
+        // Reject expired grants (older than 120 seconds).
+        if ($now - (int)$payload['timestamp'] > 120) {
             show_error("SSO Token Expired. Please retry from Master Dashboard.", 403);
+            return;
+        }
+
+        // Reject implausibly distant future timestamps (small clock-skew tolerance only).
+        if ((int)$payload['timestamp'] - $now > 30) {
+            show_error("SSO Token has an invalid future timestamp", 403);
+            return;
+        }
+
+        // Bind the grant to this tenant. The resolved database name is the
+        // authoritative tenant identity selected by the application config.
+        $school_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$payload['school_slug']);
+        $resolved_db = (isset($this->db) && !empty($this->db->database)) ? $this->db->database : '';
+        $expected_db = 'ss_tenant_' . $school_slug;
+
+        if ($school_slug === '' || $resolved_db === '' || $resolved_db !== $expected_db) {
+            show_error("SSO token is not valid for this school", 403);
             return;
         }
 
@@ -1045,6 +1070,41 @@ class Site extends Public_Controller
         $staff = $this->staff_model->get($staff_id);
         if (!$staff) {
             show_error("Target Staff User Not Found in this School", 404);
+            return;
+        }
+
+        if (!isset($staff['is_active']) || (int)$staff['is_active'] !== 1) {
+            show_error("Target Staff User is inactive", 403);
+            return;
+        }
+
+        $nonce = substr((string)$payload['nonce'], 0, 64);
+        $operator = substr((string)$payload['operator'], 0, 191);
+        $purpose = substr((string)$payload['purpose'], 0, 191);
+
+        if ($nonce === '') {
+            show_error("Invalid SSO Payload", 400);
+            return;
+        }
+
+        // Consume the grant exactly once to prevent replay across requests.
+        $this->db->query("CREATE TABLE IF NOT EXISTS `master_sso_grants` (
+            `nonce` VARCHAR(64) NOT NULL PRIMARY KEY,
+            `school_slug` VARCHAR(191) NOT NULL,
+            `staff_id` INT NOT NULL,
+            `operator` VARCHAR(191) NOT NULL,
+            `purpose` VARCHAR(191) NOT NULL,
+            `consumed_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+        $this->db->query(
+            "INSERT IGNORE INTO `master_sso_grants` (`nonce`, `school_slug`, `staff_id`, `operator`, `purpose`)
+             VALUES (?, ?, ?, ?, ?)",
+            array($nonce, $school_slug, $staff_id, $operator, $purpose)
+        );
+
+        if ($this->db->affected_rows() !== 1) {
+            show_error("SSO token has already been used", 403);
             return;
         }
 
@@ -1108,7 +1168,8 @@ class Site extends Public_Controller
             'admin_panel_whatsapp_from'   => $setting_result[0]['admin_panel_whatsapp_from'],
             'admin_panel_whatsapp_to'     => $setting_result[0]['admin_panel_whatsapp_to'],
             'print_heder_image'      => IsNullOrEmptyString($print_heder_image) ? "" : $print_heder_image,
-            'is_master_sso'          => true
+            'is_master_sso'          => true,
+            'master_operator'        => $operator
         );
 
         $this->session->set_userdata('admin', $session_data);

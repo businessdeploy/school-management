@@ -228,9 +228,16 @@ router.get('/:id/sso-login', (req: Request, res: Response) => {
   const school = MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
+  const operator = (req.session as any)?.user?.username || 'unknown-operator';
   const targetDomain = school.customDomain || school.subdomain;
-  const redirectUrl = SsoService.getSsoRedirectUrl(targetDomain, school.slug, 1);
-  console.log(`[Master SSO] Generating 1-click login for ${school.name} -> ${redirectUrl}`);
+  const redirectUrl = SsoService.getSsoRedirectUrl({
+    schoolDomain: targetDomain,
+    schoolSlug: school.slug,
+    staffId: 1,
+    operator,
+    purpose: 'school_access',
+  });
+  console.log(`[Master SSO] Issued school access grant for ${school.slug} by ${operator}`);
   res.redirect(redirectUrl);
 });
 

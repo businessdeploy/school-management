@@ -195,9 +195,16 @@ router.get('/:id/sso-login', (req, res) => {
     const school = master_db_1.MasterDb.getSchoolById(req.params.id);
     if (!school)
         return res.redirect('/schools');
+    const operator = req.session?.user?.username || 'unknown-operator';
     const targetDomain = school.customDomain || school.subdomain;
-    const redirectUrl = sso_service_1.SsoService.getSsoRedirectUrl(targetDomain, school.slug, 1);
-    console.log(`[Master SSO] Generating 1-click login for ${school.name} -> ${redirectUrl}`);
+    const redirectUrl = sso_service_1.SsoService.getSsoRedirectUrl({
+        schoolDomain: targetDomain,
+        schoolSlug: school.slug,
+        staffId: 1,
+        operator,
+        purpose: 'school_access',
+    });
+    console.log(`[Master SSO] Issued school access grant for ${school.slug} by ${operator}`);
     res.redirect(redirectUrl);
 });
 // 6. Direct Super Admin Password Reset
