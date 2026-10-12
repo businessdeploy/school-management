@@ -22,8 +22,6 @@ class _SettingsPageState extends State<SettingsPage> {
   bool darkModeEnabled = false;
   String? selectedLanguageId;
   String? selectedLanguageLabel = 'English';
-  String? selectedCurrencyId;
-  String? selectedCurrencyLabel;
   Map<String, dynamic>? apiTestResult;
   bool isTestingApi = false;
 
@@ -31,104 +29,6 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadSettings();
-    // Initialize currency selection after provider loads currencies
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeCurrencySelection();
-      // Also validate selection when currencies finish loading
-      final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
-      if (!appConfigProvider.isLoadingCurrencies && appConfigProvider.currencyOptions.isNotEmpty) {
-        _validateCurrencySelection();
-      }
-    });
-  }
-
-  void _validateCurrencySelection() {
-    final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
-    if (selectedCurrencyId != null && appConfigProvider.currencyOptions.isNotEmpty) {
-      // Check if selected currency ID exists in the list
-      final isValid = appConfigProvider.currencyOptions.any((currency) {
-        final id = (currency['currency_id'] ?? currency['id'])?.toString();
-        return id == selectedCurrencyId && id != null && id.isNotEmpty && id != 'null';
-      });
-
-      if (!isValid) {
-        // Selection is invalid, clear it
-        setState(() {
-          selectedCurrencyId = null;
-          selectedCurrencyLabel = null;
-        });
-        _initializeCurrencySelection();
-      }
-    }
-  }
-
-  void _initializeCurrencySelection() {
-    final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
-    if (appConfigProvider.currencyOptions.isNotEmpty) {
-      // Find preferred default (USD/Dollar) or fall back to first valid currency
-      Map<String, dynamic>? firstValidCurrency;
-      Map<String, dynamic>? usdCurrency;
-      
-      for (final currency in appConfigProvider.currencyOptions) {
-        final id = (currency['currency_id'] ?? currency['id'])?.toString();
-        if (id != null && id.isNotEmpty && id != 'null' && id != '0') {
-          firstValidCurrency ??= currency;
-          
-          final shortName = currency['short_name']?.toString() ?? '';
-          final name = currency['name']?.toString() ?? '';
-          final code = currency['code']?.toString() ?? '';
-          
-          if (shortName == 'USD' || name.contains('Dollar') || code == 'USD') {
-            usdCurrency = currency;
-            break;
-          }
-        }
-      }
-
-      final defaultCurrency = usdCurrency ?? firstValidCurrency;
-
-      if (defaultCurrency != null) {
-        final currencyId = (defaultCurrency['currency_id'] ?? defaultCurrency['id'])?.toString();
-        final currencyLabel = defaultCurrency['currency_symbol'] ??
-            defaultCurrency['short_name'] ??
-            defaultCurrency['name'] ??
-            'Currency';
-
-        // Update local state if not set or if current selection is invalid
-        if (selectedCurrencyId == null || selectedCurrencyId!.isEmpty || selectedCurrencyId == 'null') {
-          setState(() {
-            selectedCurrencyId = currencyId;
-            selectedCurrencyLabel = currencyLabel;
-          });
-          appConfigProvider.setSelectedCurrencyId(currencyId);
-          _saveSettings();
-        } else {
-          // Validate current selection exists in the list
-          final isValid = appConfigProvider.currencyOptions.any((currency) {
-            final id = (currency['currency_id'] ?? currency['id'])?.toString();
-            return id == selectedCurrencyId && id != null && id.isNotEmpty && id != 'null';
-          });
-
-          if (!isValid) {
-            // Current selection is invalid, set to first valid currency
-            setState(() {
-              selectedCurrencyId = currencyId;
-              selectedCurrencyLabel = currencyLabel;
-            });
-            appConfigProvider.setSelectedCurrencyId(currencyId);
-            _saveSettings();
-          } else {
-            // Already valid, but make sure the label is updated from provider if it was "Loading..."
-            if (selectedCurrencyLabel == null || selectedCurrencyLabel == 'Loading...') {
-              setState(() {
-                selectedCurrencyLabel = appConfigProvider.selectedCurrencyLabel;
-              });
-            }
-            appConfigProvider.setSelectedCurrencyId(selectedCurrencyId);
-          }
-        }
-      }
-    }
   }
 
   Future<void> _loadSettings() async {
@@ -139,14 +39,6 @@ class _SettingsPageState extends State<SettingsPage> {
       selectedLanguageId = prefs.getString('selected_language_id');
       selectedLanguageLabel =
           prefs.getString('selected_language_label') ?? 'English';
-      selectedCurrencyId = prefs.getString('selected_currency_id');
-      selectedCurrencyLabel = prefs.getString('selected_currency_label');
-      
-      // Validate loaded IDs - clear if they're invalid
-      if (selectedCurrencyId != null && (selectedCurrencyId!.isEmpty || selectedCurrencyId == 'null' || selectedCurrencyId == '0')) {
-        selectedCurrencyId = null;
-        selectedCurrencyLabel = null;
-      }
       if (selectedLanguageId != null && (selectedLanguageId!.isEmpty || selectedLanguageId == 'null' || selectedLanguageId == '0')) {
         selectedLanguageId = null;
         selectedLanguageLabel = 'English';
@@ -163,16 +55,6 @@ class _SettingsPageState extends State<SettingsPage> {
     }
     if (selectedLanguageLabel != null) {
       await prefs.setString('selected_language_label', selectedLanguageLabel!);
-    }
-    if (selectedCurrencyId != null) {
-      await prefs.setString('selected_currency_id', selectedCurrencyId!);
-      // Also update provider to ensure base_price logic is in sync
-      if (mounted) {
-        Provider.of<AppConfigProvider>(context, listen: false).setSelectedCurrencyId(selectedCurrencyId);
-      }
-    }
-    if (selectedCurrencyLabel != null) {
-      await prefs.setString('selected_currency_label', selectedCurrencyLabel!);
     }
   }
 
@@ -246,37 +128,7 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _changeCurrency(BuildContext context, String? currencyId) async {
-    if (currencyId == null) return;
-    final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
-    final option = appConfigProvider.currencyOptions.firstWhere(
-      (currency) =>
-          (currency['currency_id'] ?? currency['id'])?.toString() == currencyId,
-      orElse: () => {},
-    );
-    final success = await CurrencyApi.updateStudentCurrency(currencyId: currencyId);
-    if (success) {
-      final updatedLabel = option['short_name'] ??
-                option['code'] ??
-                option['name'] ??
-                selectedCurrencyLabel;
 
-      setState(() {
-        selectedCurrencyId = currencyId;
-        selectedCurrencyLabel = updatedLabel;
-      });
-      appConfigProvider.setSelectedCurrencyId(currencyId);
-      _saveSettings();
-      await appConfigProvider.refreshConfig();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Currency updated successfully')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update currency')),
-      );
-    }
-  }
 
   void _showChangePasswordDialog() {
     final TextEditingController currentPasswordController =
@@ -571,118 +423,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
               ),
             ),
-            Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(4.0),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          appConfigProvider.selectedCurrencySymbol,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: appConfigProvider.primaryColorObj,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                title: const TranslatedText('Currency'),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      appConfigProvider.selectedCurrencyLabel,
-                      style: TextStyle(color: Colors.grey[800]),
-                    ),
-                    if (appConfigProvider.currencyOptions.isNotEmpty)
-                      Text(
-                        '${appConfigProvider.currencyOptions.length} currencies available',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                  ],
-                ),
-                trailing: appConfigProvider.isLoadingCurrencies
-                    ? const SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                     : appConfigProvider.currencyOptions.isEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.refresh),
-                            onPressed: () => appConfigProvider.refreshCurrencyOptions(),
-                            tooltip: 'Refresh currencies',
-                          )
-                        : Builder(
-                            builder: (context) {
-                              // Debug: Log currency options structure
-                              if (appConfigProvider.currencyOptions.isNotEmpty) {
-                                
-                                
-                                
-                              }
-                              
-                              // Filter out null/empty IDs and ensure unique values
-                              final validCurrencies = <String, String>{};
-                              for (final currency in appConfigProvider.currencyOptions) {
-                                // Try multiple possible ID field names
-                                final id = (currency['id'] ?? 
-                                           currency['currency_id'] ?? 
-                                           currency['currencyId'])?.toString();
-                                           
-                                if (id != null && id.isNotEmpty && id != 'null' && id != '0') {
-                                  // Try multiple possible label field names
-                                  final label = (currency['short_name'] ?? 
-                                                currency['code'] ?? 
-                                                currency['currency_code'] ??
-                                                currency['currency_symbol'] ??
-                                                currency['name'] ??
-                                                currency['currency_name'] ??
-                                                'Currency $id').toString();
-                                  // Only add if not already present (avoid duplicates)
-                                  if (!validCurrencies.containsKey(id)) {
-                                    validCurrencies[id] = label;
-                                    
-                                  }
-                                }
-                              }
-                              
-                              
-                              
 
-                              // Validate selectedCurrencyId exists in valid items
-                              final validSelectedId = validCurrencies.containsKey(selectedCurrencyId)
-                                  ? selectedCurrencyId
-                                  : null;
-
-                              return DropdownButton<String>(
-                                value: validSelectedId,
-                                hint: const Text('Select'),
-                                underline: const SizedBox(),
-                                items: validCurrencies.entries.map((entry) {
-                                  return DropdownMenuItem<String>(
-                                    value: entry.key,
-                                    child: Text(entry.value),
-                                  );
-                                }).toList(),
-                                onChanged: (value) => _changeCurrency(context, value),
-                              );
-                            },
-                          ),
-              ),
-            ),
 
             const SizedBox(height: 24),
                     ],

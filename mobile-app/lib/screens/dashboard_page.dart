@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/api/profile_api.dart';
+import '../services/api/module_api.dart';
 import '../widgets/translated_text.dart';
 import 'package:provider/provider.dart';
 import '../models/student.dart';
@@ -57,6 +58,7 @@ class _DashboardPageState extends State<DashboardPage> {
   bool isLoading = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _unreadNotifications = 0;
+  Map<String, bool> _modulePermissions = {};
 
   @override
   void initState() {
@@ -65,11 +67,45 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _initDashboard() async {
-    // Load students (local/fast) first to show the profile immediately
+    // 1. Load cached permissions immediately for instant UI filtering
+    await _loadCachedPermissions();
+
+    // 2. Load students (local/fast) first to show the profile immediately
     await _loadStudents();
     
-    // Load unread notifications in the background (non-blocking)
+    // 3. Sync live permissions from Web Admin Panel in background
+    _syncModulePermissions();
+
+    // 4. Load unread notifications in the background (non-blocking)
     _loadUnreadNotifications();
+  }
+
+  Future<void> _loadCachedPermissions() async {
+    final cached = await ModuleApi.getCachedPermissions();
+    if (cached.isNotEmpty && mounted) {
+      setState(() {
+        _modulePermissions = cached;
+      });
+    }
+  }
+
+  Future<void> _syncModulePermissions() async {
+    try {
+      final perms = await ModuleApi.getModulePermissions();
+      if (perms.isNotEmpty && mounted) {
+        setState(() {
+          _modulePermissions = perms;
+        });
+      }
+    } catch (_) {}
+  }
+
+  bool _isItemEnabled(DashboardItem item) {
+    if (item.shortCode == null || item.shortCode!.isEmpty) return true;
+    if (_modulePermissions.isNotEmpty) {
+      return _modulePermissions[item.shortCode] == true;
+    }
+    return true;
   }
 
 
@@ -356,9 +392,10 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   List<DashboardItem> _getElearningItems() {
-    return [
+    final items = [
       DashboardItem(
         title: 'Homework',
+        shortCode: 'homework',
         imagePath: 'assets/images/ic_dashboard_homework.png',
         onTap: () => Navigator.push(
           context,
@@ -367,6 +404,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Daily Assignment',
+        shortCode: 'daily_assignment',
         imagePath: 'assets/images/assignment.png',
         onTap: () => Navigator.push(
           context,
@@ -375,6 +413,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Lesson Plan',
+        shortCode: 'lesson_plan',
         imagePath: 'assets/images/lesson plan.png',
         onTap: () => Navigator.push(
           context,
@@ -383,6 +422,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Online Exam',
+        shortCode: 'online_examination',
         imagePath: 'assets/images/online-test.png',
         onTap: () => Navigator.push(
           context,
@@ -391,6 +431,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Download Center',
+        shortCode: 'download_center',
         imagePath: 'assets/images/ic_nav_download.png',
         onTap: () => Navigator.push(
           context,
@@ -399,6 +440,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Online Course',
+        shortCode: 'online_course',
         imagePath: 'assets/images/online-course.png',
         onTap: () => _verifyAndNavigate(
           addonType: 'ssoclc',
@@ -407,6 +449,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Zoom Live Classes',
+        shortCode: 'live_classes',
         imagePath: 'assets/images/zoom-icon.png',
         onTap: () => _verifyAndNavigate(
           addonType: 'sszlc',
@@ -415,6 +458,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Gmeet Live Classes',
+        shortCode: 'gmeet_live_classes',
         imagePath: 'assets/images/google_meet.png',
         onTap: () => _verifyAndNavigate(
           addonType: 'ssglc',
@@ -422,12 +466,14 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ),
     ];
+    return items.where(_isItemEnabled).toList();
   }
 
   List<DashboardItem> _getAcademicsItems() {
-    return [
+    final items = [
       DashboardItem(
         title: 'Class Timetable',
+        shortCode: 'class_timetable',
         imagePath: 'assets/images/study-time.png',
         onTap: () => Navigator.push(
           context,
@@ -436,6 +482,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Syllabus Status',
+        shortCode: 'syllabus_status',
         imagePath: 'assets/images/syllabus.png',
         onTap: () => Navigator.push(
           context,
@@ -444,6 +491,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Attendance',
+        shortCode: 'attendance',
         imagePath: 'assets/images/ic_dashboard_attendance.png',
         onTap: () => Navigator.push(
           context,
@@ -452,6 +500,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Student Timeline',
+        shortCode: 'student_timeline',
         imagePath: 'assets/images/timeline.png',
         onTap: () => Navigator.push(
           context,
@@ -460,6 +509,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Behaviour Records',
+        shortCode: 'behaviour_records',
         imagePath: 'assets/images/pending-tasks.png',
         onTap: () => _verifyAndNavigate(
           addonType: 'ssbr',
@@ -468,6 +518,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Teacher Review',
+        shortCode: 'teachers_rating',
         imagePath: 'assets/images/teacher review.png',
         onTap: () => Navigator.push(
           context,
@@ -476,6 +527,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Examination',
+        shortCode: 'examinations',
         imagePath: 'assets/images/ic_nav_examination.png',
         onTap: () => Navigator.push(
           context,
@@ -484,6 +536,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'CBSE Examination',
+        shortCode: 'cbseexam',
         imagePath: 'assets/images/online-test.png',
         onTap: () => _verifyAndNavigate(
           addonType: 'sscbse',
@@ -492,6 +545,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'My Documents',
+        shortCode: 'mydocuments',
         imagePath: 'assets/images/documentation.png',
         onTap: () => Navigator.push(
           context,
@@ -499,41 +553,32 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ),
     ];
+    return items.where(_isItemEnabled).toList();
   }
 
   List<DashboardItem> _getCommunicateItems() {
-  List<DashboardItem> items = [
-    DashboardItem(
-      title: 'Notice Board',
-      imagePath: 'assets/images/ic_notice.png',
-      imageSize: 30, // Reduced size for visual consistency
-      icon: Icons.notifications,
-      iconColor: Colors.blue.shade100,
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const NoticeBoardPage()),
+    final items = [
+      DashboardItem(
+        title: 'Notice Board',
+        shortCode: 'notice_board',
+        imagePath: 'assets/images/ic_notice.png',
+        imageSize: 30, // Reduced size for visual consistency
+        icon: Icons.notifications,
+        iconColor: Colors.blue.shade100,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NoticeBoardPage()),
+        ),
       ),
-    ),
-  ];
-
-  while (items.length < 4) {
-    items.add(DashboardItem(
-      title: '',
-      icon: Icons.circle,
-      iconColor: Colors.transparent,
-      onTap: null,
-      isPlaceholder: true,
-    ));
+    ];
+    return items.where(_isItemEnabled).toList();
   }
 
-  return items;
-}
-
-
   List<DashboardItem> _getOthersItems() {
-    return [
+    final items = [
       DashboardItem(
         title: 'Fees',
+        shortCode: 'fees',
         imagePath: 'assets/images/fee.png',
         onTap: () => Navigator.push(
           context,
@@ -542,6 +587,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Apply Leave',
+        shortCode: 'apply_leave',
         imagePath: 'assets/images/leave.png',
         onTap: () => Navigator.push(
           context,
@@ -550,6 +596,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Visitor Book',
+        shortCode: 'visitor_book',
         imagePath: 'assets/images/ic_visitors.png',
         onTap: () => Navigator.push(
           context,
@@ -558,6 +605,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Transport Routes',
+        shortCode: 'transport_routes',
         imagePath: 'assets/images/transport.png',
         onTap: () => Navigator.push(
           context,
@@ -566,6 +614,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Hostel Rooms',
+        shortCode: 'hostel_rooms',
         imagePath: 'assets/images/hostel.png',
         onTap: () => Navigator.push(
           context,
@@ -574,6 +623,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Calendar To Do List',
+        shortCode: 'calendar_to_do_list',
         imagePath: 'assets/images/pending-tasks.png',
         onTap: () => Navigator.push(
           context,
@@ -582,6 +632,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       DashboardItem(
         title: 'Library',
+        shortCode: 'library',
         imagePath: 'assets/images/ic_library.png',
         onTap: () => Navigator.push(
           context,
@@ -589,6 +640,7 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ),
     ];
+    return items.where(_isItemEnabled).toList();
   }
 
   @override
@@ -657,25 +709,32 @@ class _DashboardPageState extends State<DashboardPage> {
                     StudentProfile(student: selectedStudent!),
 
                     // E-Learning Section
-                    DashboardCard(
-                      title: 'E-Learning',
-                      items: _getElearningItems(),
-                    ),
+                    if (_getElearningItems().isNotEmpty)
+                      DashboardCard(
+                        title: 'E-Learning',
+                        items: _getElearningItems(),
+                      ),
 
                     // Academics Section
-                    DashboardCard(
-                      title: 'Academics',
-                      items: _getAcademicsItems(),
-                    ),
+                    if (_getAcademicsItems().isNotEmpty)
+                      DashboardCard(
+                        title: 'Academics',
+                        items: _getAcademicsItems(),
+                      ),
 
                     // Communicate Section
-                    DashboardCard(
-                      title: 'Communicate',
-                      items: _getCommunicateItems(),
-                    ),
+                    if (_getCommunicateItems().isNotEmpty)
+                      DashboardCard(
+                        title: 'Communicate',
+                        items: _getCommunicateItems(),
+                      ),
 
                     // Others Section
-                    DashboardCard(title: 'Others', items: _getOthersItems()),
+                    if (_getOthersItems().isNotEmpty)
+                      DashboardCard(
+                        title: 'Others',
+                        items: _getOthersItems(),
+                      ),
                   ],
                 ),
               ),
