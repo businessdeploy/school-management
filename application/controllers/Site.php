@@ -1007,8 +1007,12 @@ class Site extends Public_Controller
             return;
         }
 
-        // Shared master secret from env or fallback
-        $secret = getenv('MASTER_SSO_SECRET') ? getenv('MASTER_SSO_SECRET') : 'ss-master-orchestrator-secret-key-2026';
+        // Shared master secret must be provided via environment
+        $secret = getenv('MASTER_SSO_SECRET');
+        if (empty($secret)) {
+            show_error("Master SSO is not configured on this school instance", 503);
+            return;
+        }
 
         // Token format: <base64_payload>.<hmac_signature>
         $parts = explode('.', $token);

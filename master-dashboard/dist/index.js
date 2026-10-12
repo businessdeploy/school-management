@@ -50,6 +50,7 @@ const analytics_routes_1 = __importDefault(require("./routes/analytics-routes"))
 const network_routes_1 = __importDefault(require("./routes/network-routes"));
 const caddy_routes_1 = __importDefault(require("./routes/caddy-routes"));
 const fs_1 = __importDefault(require("fs"));
+(0, config_1.validateConfig)();
 const app = (0, express_1.default)();
 // 1. Initialize Subsystems
 master_db_1.MasterDb.init();
@@ -63,9 +64,9 @@ app.set('views', viewsPath);
 app.set('view engine', 'ejs');
 // 3. Caddy On-Demand TLS Validation (Must be public before gateway check)
 app.use('/api/v1/domains', caddy_routes_1.default);
-// 4. Intelligent Tenant Gateway Router
+// 4. Intelligent Tenant Gateway Router (Must be BEFORE body parsers to preserve stream for proxying!)
 app.use(gateway_proxy_1.GatewayProxy.handleTenantRouting);
-// 5. Static Assets & Body Parsers
+// 5. Static Assets & Body Parsers (Only needed for Master Dashboard)
 app.use(express_1.default.static(path_1.default.join(__dirname, '../public')));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
@@ -149,7 +150,5 @@ app.listen(config_1.config.port, config_1.config.host, () => {
     console.log(`=======================================================`);
     console.log(`🚀 Smart School Master Control Plane is Online!`);
     console.log(`🌐 Dashboard URL: http://${config_1.config.host}:${config_1.config.port}`);
-    console.log(`🔑 Default Login: ${config_1.config.masterAdminUsername} / ${config_1.config.masterAdminPassword}`);
-    console.log(`🔒 Cryptographic SSO Secret: Active`);
     console.log(`=======================================================`);
 });

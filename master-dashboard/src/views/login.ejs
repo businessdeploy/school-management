@@ -31,22 +31,18 @@
       <form action="/auth/login" method="POST" class="space-y-4">
         <div>
           <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Master Username</label>
-          <input type="text" name="username" value="superadmin" required class="w-full px-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
+          <input type="text" name="username" required autocomplete="username" class="w-full px-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Security Password</label>
-          <input type="password" name="password" value="MasterAdmin2026!" required class="w-full px-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
+          <input type="password" name="password" required autocomplete="current-password" class="w-full px-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
         </div>
 
         <button type="submit" class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-600/25 transition mt-2">
           Authenticate & Access Fleet
         </button>
       </form>
-
-      <div class="mt-6 pt-6 border-t border-slate-800 text-center text-xs text-slate-500">
-        Default credentials: <code class="text-indigo-400">superadmin</code> / <code class="text-indigo-400">MasterAdmin2026!</code>
-      </div>
     </div>
   </div>
 </body>

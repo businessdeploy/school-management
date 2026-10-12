@@ -35,13 +35,14 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOST=0.0.0.0
-      - MASTER_ADMIN_USER=superadmin
-      - MASTER_ADMIN_PASS=MasterAdmin2026!
-      - MASTER_SSO_SECRET=ss-master-orchestrator-secret-key-2026
+      - MASTER_ADMIN_USER=${MASTER_ADMIN_USER:?Set MASTER_ADMIN_USER in .env}
+      - MASTER_ADMIN_PASS=${MASTER_ADMIN_PASS:?Set MASTER_ADMIN_PASS in .env}
+      - SESSION_SECRET=${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      - MASTER_SSO_SECRET=${MASTER_SSO_SECRET:?Set MASTER_SSO_SECRET in .env}
       - FLEET_DB_HOST=fleet_db
       - FLEET_DB_PORT=3306
       - FLEET_DB_USER=root
-      - FLEET_DB_PASSWORD=smartschool_root_pass
+      - FLEET_DB_PASSWORD=${FLEET_DB_PASSWORD:?Set FLEET_DB_PASSWORD in .env}
       - MASTER_DB_NAME=ss_master_orchestrator
       - DOCKER_NETWORK=smartschool_network
       - TENANT_DOCKER_IMAGE=smartschool-base:latest
@@ -68,7 +69,7 @@ services:
       --innodb_buffer_pool_size=1G
       --innodb_log_file_size=256M
     environment:
-      MYSQL_ROOT_PASSWORD: smartschool_root_pass
+      MYSQL_ROOT_PASSWORD: ${FLEET_DB_PASSWORD:?Set FLEET_DB_PASSWORD in .env}
       MYSQL_DATABASE: ss_master_orchestrator
     volumes:
       - mariadb_fleet_data:/var/lib/mysql

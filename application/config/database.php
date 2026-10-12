@@ -76,7 +76,7 @@ $query_builder = TRUE;
 
 $db_hostname = getenv('DB_HOST') ? getenv('DB_HOST') : (getenv('FLEET_DB_HOST') ? getenv('FLEET_DB_HOST') : (file_exists('/.dockerenv') ? 'smartschool-mariadb' : 'localhost'));
 $db_username = getenv('DB_USER') ? getenv('DB_USER') : (getenv('FLEET_DB_USER') ? getenv('FLEET_DB_USER') : 'root');
-$db_password = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('FLEET_DB_PASSWORD') !== false ? getenv('FLEET_DB_PASSWORD') : 'SmartSchoolPass2026!');
+$db_password = getenv('DB_PASS') !== false ? getenv('DB_PASS') : getenv('FLEET_DB_PASSWORD');
 $db_database = getenv('DB_NAME') ? getenv('DB_NAME') : 'smart_school';
 
 // Dynamic Multi-Tenant Database Resolution

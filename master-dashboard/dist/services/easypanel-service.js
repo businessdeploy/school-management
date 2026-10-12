@@ -2,8 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EasypanelService = void 0;
 class EasypanelService {
-    static mcpUrl = process.env.EASYPANEL_MCP_URL ||
-        'https://server.businessdeploy.com/api/mcp/3a1e21b11d93ac01096f4aa65333261324a7c229ce22c8cd8f0ba34ae6783291';
+    static mcpUrl = process.env.EASYPANEL_MCP_URL || '';
     static projectName = process.env.EASYPANEL_PROJECT || 'manage';
     static serviceName = process.env.EASYPANEL_SERVICE || 'school-crm';
     static servicePort = parseInt(process.env.EASYPANEL_PORT || '3000', 10);

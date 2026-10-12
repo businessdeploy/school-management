@@ -1,7 +1,5 @@
 export class EasypanelService {
-  private static mcpUrl =
-    process.env.EASYPANEL_MCP_URL ||
-    'https://server.businessdeploy.com/api/mcp/3a1e21b11d93ac01096f4aa65333261324a7c229ce22c8cd8f0ba34ae6783291';
+  private static mcpUrl = process.env.EASYPANEL_MCP_URL || '';
   private static projectName = process.env.EASYPANEL_PROJECT || 'manage';
   private static serviceName = process.env.EASYPANEL_SERVICE || 'school-crm';
   private static servicePort = parseInt(process.env.EASYPANEL_PORT || '3000', 10);

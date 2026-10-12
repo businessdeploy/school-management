@@ -32,7 +32,7 @@ Because **Easypanel** already includes a built-in Traefik reverse proxy and 1-cl
 
 ### Step 1: Create MariaDB Service in Easypanel
 1. Inside your Easypanel project, click **"+ Service"** -> **"Database"** -> **"MariaDB"**.
-2. Set the database root password (e.g. `smartschool_root_pass`) and database name `ss_master_orchestrator`.
+2. Set a strong database root password and database name `ss_master_orchestrator`.
 3. Note the internal host name (usually `mariadb` or `mariadb:3306`).
 
 ### Step 2: Deploy Master Dashboard Service
@@ -45,16 +45,19 @@ Because **Easypanel** already includes a built-in Traefik reverse proxy and 1-cl
    ```env
    NODE_ENV=production
    PORT=3000
-   MASTER_ADMIN_USER=superadmin
-   MASTER_ADMIN_PASS=MasterAdmin2026!
-   MASTER_SSO_SECRET=ss-master-orchestrator-secret-key-2026
+   MASTER_ADMIN_USER=replace-me
+   MASTER_ADMIN_PASS=replace-with-a-long-random-password
+   SESSION_SECRET=replace-with-a-long-random-string
+   MASTER_SSO_SECRET=replace-with-a-long-random-string
    FLEET_DB_HOST=mariadb
    FLEET_DB_PORT=3306
    FLEET_DB_USER=root
-   FLEET_DB_PASSWORD=your_mariadb_password
+   FLEET_DB_PASSWORD=replace-with-a-long-random-db-password
    MASTER_DB_NAME=ss_master_orchestrator
    DOCKER_NETWORK=easypanel
    ```
+
+   The `MASTER_SSO_SECRET` must match the value configured on every school tenant.
 4. Under **Mounts / Volumes**, add:
    - Host path: `/var/run/docker.sock` -> Container path: `/var/run/docker.sock` (gives control plane Docker API access)
    - Host path: `/etc/easypanel/projects/your-project/tenants` -> Container path: `/var/www/html/tenants`
@@ -70,13 +73,14 @@ For running on any standard Ubuntu 22.04 / 24.04 server:
 ```bash
 git clone <your-repo-url> smartschool
 cd smartschool
+cp .env.example .env
+# edit .env and set strong secrets, then:
 ./deploy.sh
 ```
 
 - **Master Dashboard**: `http://<your-server-ip>:3000`
-- **Default Username**: `superadmin`
-- **Default Password**: `MasterAdmin2026!`
 - **phpMyAdmin**: `http://<your-server-ip>:8081`
+- Credentials are configured in `.env`; no default credentials are shipped.
 
 ---
 

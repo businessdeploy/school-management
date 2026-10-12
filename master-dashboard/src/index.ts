@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import session from 'express-session';
 import path from 'path';
-import { config } from './config';
+import { config, validateConfig } from './config';
 import { MasterDb } from './db/master-db';
 import { DockerService } from './services/docker-service';
 import { GatewayProxy } from './services/gateway-proxy';
@@ -14,6 +14,8 @@ import networkRoutes from './routes/network-routes';
 import caddyRoutes from './routes/caddy-routes';
 
 import fs from 'fs';
+
+validateConfig();
 
 const app = express();
 
@@ -130,7 +132,5 @@ app.listen(config.port, config.host, () => {
   console.log(`=======================================================`);
   console.log(`🚀 Smart School Master Control Plane is Online!`);
   console.log(`🌐 Dashboard URL: http://${config.host}:${config.port}`);
-  console.log(`🔑 Default Login: ${config.masterAdminUsername} / ${config.masterAdminPassword}`);
-  console.log(`🔒 Cryptographic SSO Secret: Active`);
   console.log(`=======================================================`);
 });

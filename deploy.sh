@@ -9,6 +9,12 @@ echo "=================================================================="
 echo "⚡ Smart School Multi-Tenant SaaS Platform Deployer"
 echo "=================================================================="
 
+# 0. Require environment secrets
+if [ ! -f .env ]; then
+  echo "❌ Missing .env file. Copy .env.example to .env and set all required secrets first."
+  exit 1
+fi
+
 # 1. Directory Scaffolding
 echo "📁 Setting up persistent tenant storage directories..."
 mkdir -p tenants
@@ -27,8 +33,7 @@ echo "=================================================================="
 echo "✅ SaaS Master Fleet Platform is Online!"
 echo "=================================================================="
 echo "🌐 Master Dashboard:    http://localhost:3000"
-echo "👤 Super Admin User:    superadmin"
-echo "🔑 Master Password:     MasterAdmin2026!"
 echo "🗄️ Database Management: http://localhost:8081 (phpMyAdmin)"
 echo "🔐 Caddy On-Demand SSL: Active on Ports 80 & 443"
+echo "🔒 Credentials are read from the .env file; they are never logged."
 echo "=================================================================="
