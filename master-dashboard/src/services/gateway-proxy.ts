@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import httpProxy from 'http-proxy';
-import { MasterDb, SchoolRecord } from '../db/master-db';
-import { SsoService } from './sso-service';
+import { MasterDb } from '../db/master-db';
 
 export class GatewayProxy {
   private static proxy = httpProxy.createProxyServer({
@@ -122,41 +121,21 @@ export class GatewayProxy {
 
     return GatewayProxy.proxy.web(req, res, { target, proxyTimeout: 30000, timeout: 30000 }, (err) => {
       console.warn(`[GatewayProxy] Proxy to ${target} failed for ${school.slug}:`, err.message);
-      // Fallback if PHP backend is not yet ready
-      const ssoUrl = SsoService.getSsoRedirectUrl(req.headers.host || school.subdomain, school.slug, 1);
-      res.status(200).send(`
+      res.status(503).send(`
         <!DOCTYPE html>
         <html lang="en">
         <head>
           <meta charset="UTF-8">
-          <title>${school.name} - Instance Gateway</title>
+          <title>Service Unavailable</title>
           <script src="https://cdn.tailwindcss.com"></script>
         </head>
         <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-6">
-          <div class="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-2xl">
-            <div class="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-5 text-3xl">
-              🏫
+          <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-2xl">
+            <div class="w-16 h-16 bg-slate-500/10 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-5 text-3xl">
+              ⚠️
             </div>
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 mb-3">
-              ● Instance Active & Online
-            </span>
-            <h1 class="text-2xl font-bold mb-1">${school.name}</h1>
-            <p class="text-slate-400 text-sm mb-6">Database: <code class="text-indigo-400">${school.dbName}</code> | Container: <code class="text-emerald-400">${school.containerName}</code></p>
-            
-            <div class="bg-slate-800/50 rounded-xl p-4 text-left text-xs space-y-2 mb-6">
-              <div class="flex justify-between"><span class="text-slate-400">Subdomain:</span> <span class="font-mono text-slate-200">${school.subdomain}</span></div>
-              ${school.customDomain ? `<div class="flex justify-between"><span class="text-slate-400">Custom Domain:</span> <span class="font-mono text-slate-200">${school.customDomain}</span></div>` : ''}
-              <div class="flex justify-between"><span class="text-slate-400">Admin Email:</span> <span class="text-slate-200">${school.adminEmail}</span></div>
-            </div>
-
-            <div class="space-y-3">
-              <a href="${ssoUrl}" class="w-full inline-flex items-center justify-center px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/20 transition">
-                ⚡ Login via 1-Click Master SSO
-              </a>
-              <a href="/" class="w-full inline-flex items-center justify-center px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition">
-                ← Return to Master Dashboard
-              </a>
-            </div>
+            <h1 class="text-2xl font-bold mb-2">Service Unavailable</h1>
+            <p class="text-slate-400 text-sm mb-6">This school portal is temporarily unavailable. Please try again in a few moments.</p>
           </div>
         </body>
         </html>
