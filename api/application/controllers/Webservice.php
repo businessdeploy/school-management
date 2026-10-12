@@ -498,8 +498,18 @@ class Webservice extends CI_Controller
                     $student_fields = $this->setting_model->student_fields();
                     $student_array = array();
                     $student_result = $this->student_model->get($studentId);
+                    if (empty($student_result)) {
+                        json_output(200, array(
+                            'status' => 0,
+                            'message' => 'Student record not found.',
+                            'student_result' => array(),
+                            'student_fields' => $student_fields,
+                            'custom_fields' => array()
+                        ));
+                        return;
+                    }
 					 
-                    if ($student_result->category == '') {
+                    if (!isset($student_result->category) || $student_result->category == '') {
                         $student_result->category = '';
                     }
                     if ($student_result->pickup_point_name == '') {

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../../config/app_config.dart';
 import '../../utils/dynamic_api_headers.dart';
@@ -34,15 +35,42 @@ class ProfileApi {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
-        return data;
-      } else {
-        throw Exception('Failed to load profile: ${response.statusCode}');
+        if (data is Map<String, dynamic> && data['student_result'] != null) {
+          return data;
+        }
       }
-    } catch (e) {
       
+      // Fallback: check cached login_data
+      final cached = await _getCachedProfile();
+      if (cached != null) {
+        return cached;
+      }
+
+      throw Exception('Failed to load profile: ${response.statusCode}');
+    } catch (e) {
+      final cached = await _getCachedProfile();
+      if (cached != null) {
+        return cached;
+      }
       rethrow;
     }
+  }
+
+  static Future<Map<String, dynamic>?> _getCachedProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final loginDataStr = prefs.getString('login_data');
+      if (loginDataStr != null) {
+        final loginData = jsonDecode(loginDataStr);
+        if (loginData['record'] != null) {
+          return {
+            'student_result': loginData['record'],
+            'student_fields': {},
+          };
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   // Update user profile

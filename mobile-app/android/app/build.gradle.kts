@@ -86,21 +86,25 @@ dependencies {
 }
 
 gradle.projectsEvaluated {
-    tasks.named("assembleRelease") {
+    tasks.matching { it.name in listOf("assembleDebug", "assembleRelease") }.configureEach {
         doLast {
-            val outputDir = layout.buildDirectory.dir("outputs/flutter-apk").get().asFile
-            if (!outputDir.exists()) {
-                logger.warn("Output directory not found at ${outputDir.path}")
-                return@doLast
-            }
-
             val flutterRootBuildDir = rootProject.projectDir.parentFile.resolve("build")
             val targetDir = flutterRootBuildDir.resolve("app/outputs/flutter-apk")
             targetDir.mkdirs()
 
-            outputDir.listFiles { file -> file.extension == "apk" }?.forEach { apkFile ->
-                logger.lifecycle("Copying ${apkFile.name} to ${targetDir.path}")
-                apkFile.copyTo(targetDir.resolve(apkFile.name), overwrite = true)
+            val possibleDirs = listOf(
+                layout.buildDirectory.dir("outputs/flutter-apk").get().asFile,
+                layout.buildDirectory.dir("outputs/apk/debug").get().asFile,
+                layout.buildDirectory.dir("outputs/apk/release").get().asFile
+            )
+
+            possibleDirs.forEach { dir ->
+                if (dir.exists()) {
+                    dir.listFiles { file -> file.extension == "apk" }?.forEach { apkFile ->
+                        logger.lifecycle("Copying ${apkFile.name} to ${targetDir.path}")
+                        apkFile.copyTo(targetDir.resolve(apkFile.name), overwrite = true)
+                    }
+                }
             }
         }
     }
