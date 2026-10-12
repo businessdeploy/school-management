@@ -11,6 +11,7 @@ import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/child_selection_dialog.dart';
 import 'dart:convert';
+import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_config_provider.dart';
@@ -26,10 +27,27 @@ class LoginPageUI extends StatefulWidget {
 class _LoginPageUIState extends State<LoginPageUI> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController otpController = TextEditingController();
+  int _selectedTabIndex = 0; // 0 for Password, 1 for SMS OTP
+  bool _isOtpSent = false;
+  bool _isSendingOtp = false;
+  int _resendCountdown = 0;
+  Timer? _resendTimer;
   bool isLoading = false;
   bool _obscurePassword = true;
   String schoolName = '';
   String schoolLogo = '';
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+    passwordController.dispose();
+    phoneController.dispose();
+    otpController.dispose();
+    _resendTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -194,119 +212,8 @@ class _LoginPageUIState extends State<LoginPageUI> {
 
             try {
               final responseData = jsonDecode(response.body);
-              if (responseData['status'] == 1) {
-                await _saveUserData(responseData);
-                
-                // Explicitly register device token for notifications after login
-                NotificationService.registerCurrentToken(force: true).catchError((e) => {});
-
-                if (mounted) {
-                  final record = responseData['record'];
-                  final String role = (responseData['role'] ?? '').toString().toLowerCase();
-                  
-                  List<dynamic>? children;
-                  if (record is Map && record['parent_childs'] != null) {
-                    children = record['parent_childs'];
-                  } else if (record is List) {
-                    // In some API versions, record itself is the child list
-                    children = record;
-                  }
-
-                  if (role == 'parent' && children != null && children.isNotEmpty) {
-                    if (children.length > 1) {
-                      // Show child selection dialog for parents with multiple children
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => ChildSelectionDialog(
-                          children: List<Map<String, dynamic>>.from(children!),
-                          onChildSelected: (child) async {
-                            try {
-                              Navigator.pop(context); // Close dialog
-                              await AuthService.switchChild(child);
-                              
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Login successful!'),
-                                    backgroundColor: Colors.green,
-                                    duration: Duration(seconds: 1),
-                                  ),
-                                );
-                                
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const DashboardPage()),
-                                );
-                                
-                                // Refresh provider in background after navigation starts
-                                Provider.of<AppConfigProvider>(context, listen: false).loadAppConfig();
-                              }
-                            } catch (e) {
-                              if (mounted) {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const DashboardPage()),
-                                );
-                              }
-                            }
-                          },
-                        ),
-                      );
-                    } else {
-                      // Auto-select the only child for parents with one child
-                      final child = Map<String, dynamic>.from(children[0]);
-                      await AuthService.switchChild(child);
-                      
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Login successful!'),
-                            backgroundColor: Colors.green,
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                        
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const DashboardPage()),
-                        );
-                        
-                        // Refresh provider in background
-                        Provider.of<AppConfigProvider>(context, listen: false).loadAppConfig();
-                      }
-                    }
-                  } else if (role == 'parent') {
-                    // Parent login without children - technically an error state or different API version
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Login failed: No children found for this parent account.'),
-                        backgroundColor: Colors.red,
-                        duration: Duration(seconds: 4),
-                      ),
-                    );
-                  } else {
-                    // Standard login flow
-                    try {
-                      Provider.of<AppConfigProvider>(context, listen: false).loadAppConfig();
-                    } catch (e) {
-                      // ignore
-                    }
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Login successful!'),
-                        backgroundColor: Colors.green,
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                    
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => const DashboardPage()),
-                    );
-                  }
-                }
+              if (responseData['status'] == 1 || responseData['status'] == 200) {
+                await _handleLoginSuccess(responseData);
                 return;
               } else {
                 final errorMessage = responseData['message'] ?? 'Login failed';
@@ -375,6 +282,348 @@ class _LoginPageUIState extends State<LoginPageUI> {
             content: Text(errorMessage),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleLoginSuccess(Map<String, dynamic> responseData) async {
+    await _saveUserData(responseData);
+
+    // Explicitly register device token for notifications after login
+    NotificationService.registerCurrentToken(force: true).catchError((e) => {});
+
+    if (!mounted) return;
+
+    final record = responseData['record'];
+    final String role = (responseData['role'] ?? '').toString().toLowerCase();
+
+    List<dynamic>? children;
+    if (record is Map && record['parent_childs'] != null) {
+      children = record['parent_childs'];
+    } else if (record is List) {
+      // In some API versions, record itself is the child list
+      children = record;
+    }
+
+    if (role == 'parent' && children != null && children.isNotEmpty) {
+      if (children.length > 1) {
+        // Show child selection dialog for parents with multiple children
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => ChildSelectionDialog(
+            children: List<Map<String, dynamic>>.from(children!),
+            onChildSelected: (child) async {
+              try {
+                Navigator.pop(context); // Close dialog
+                await AuthService.switchChild(child);
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Login successful!'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DashboardPage()),
+                  );
+
+                  // Refresh provider in background after navigation starts
+                  Provider.of<AppConfigProvider>(context, listen: false).loadAppConfig();
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DashboardPage()),
+                  );
+                }
+              }
+            },
+          ),
+        );
+      } else {
+        // Auto-select the only child for parents with one child
+        final child = Map<String, dynamic>.from(children[0]);
+        await AuthService.switchChild(child);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Login successful!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
+            ),
+          );
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DashboardPage()),
+          );
+
+          // Refresh provider in background
+          Provider.of<AppConfigProvider>(context, listen: false).loadAppConfig();
+        }
+      }
+    } else if (role == 'parent') {
+      // Parent login without children
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login failed: No children found for this parent account.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } else {
+      // Standard student login flow
+      try {
+        Provider.of<AppConfigProvider>(context, listen: false).loadAppConfig();
+      } catch (e) {
+        // ignore
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login successful!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardPage()),
+      );
+    }
+  }
+
+  Future<void> _sendPhoneOtp() async {
+    final phone = phoneController.text.trim();
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final last10 = cleanPhone.length >= 10 ? cleanPhone.substring(cleanPhone.length - 10) : cleanPhone;
+
+    if (last10.length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid 10-digit mobile number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSendingOtp = true;
+    });
+
+    try {
+      final baseUrl = await UrlManager.getBaseUrl();
+      if (baseUrl.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please configure your school URL first'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final endpoints = [
+        '$baseUrl/api/webservice/send_phone_otp',
+        '$baseUrl/api/auth/send_phone_otp',
+      ];
+
+      bool sent = false;
+      String message = '';
+
+      for (final endpoint in endpoints) {
+        try {
+          final response = await http.post(
+            Uri.parse(endpoint),
+            headers: {
+              'Auth-Key': AppConfig.authKey,
+              'Client-Service': AppConfig.clientService,
+              'Content-Type': AppConfig.contentType,
+              'User-Agent': 'SmartSchool-Mobile/1.0',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'phone': last10,
+            }),
+          ).timeout(AppConfig.requestTimeout);
+
+          if (response.statusCode == 200 && !response.body.contains('<html>')) {
+            final res = jsonDecode(response.body);
+            if (res['status'] == 1 || res['status'] == 200) {
+              sent = true;
+              message = res['message'] ?? 'OTP sent successfully to +91 $last10';
+              break;
+            } else {
+              message = res['message'] ?? 'Failed to send OTP';
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        if (sent) {
+          setState(() {
+            _isOtpSent = true;
+            _resendCountdown = 30;
+          });
+          _startResendTimer();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message.isNotEmpty ? message : 'Failed to send OTP. Please check the mobile number.'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSendingOtp = false;
+        });
+      }
+    }
+  }
+
+  void _startResendTimer() {
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_resendCountdown > 0) {
+        setState(() {
+          _resendCountdown--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<void> _verifyOtpAndLogin() async {
+    final phone = phoneController.text.trim();
+    final otp = otpController.text.trim();
+
+    if (otp.length < 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter the verification code sent to your phone'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final baseUrl = await UrlManager.getBaseUrl();
+      if (baseUrl.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please configure your school URL first'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final endpoints = [
+        '$baseUrl/api/webservice/phone_login',
+        '$baseUrl/api/auth/phone_login',
+      ];
+
+      bool loggedIn = false;
+      String errorMessage = 'Login failed';
+
+      for (final endpoint in endpoints) {
+        try {
+          final response = await http.post(
+            Uri.parse(endpoint),
+            headers: {
+              'Auth-Key': AppConfig.authKey,
+              'Client-Service': AppConfig.clientService,
+              'Content-Type': AppConfig.contentType,
+              'User-Agent': 'SmartSchool-Mobile/1.0',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'phone': phone,
+              'otp': otp,
+              'deviceToken': await AppConfig.getDeviceToken(),
+            }),
+          ).timeout(AppConfig.requestTimeout);
+
+          if (response.statusCode == 200 && !response.body.contains('<html>')) {
+            final responseData = jsonDecode(response.body);
+            if (responseData['status'] == 1 || responseData['status'] == 200) {
+              await _handleLoginSuccess(responseData);
+              loggedIn = true;
+              break;
+            } else {
+              errorMessage = responseData['message'] ?? 'Invalid verification code';
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (!loggedIn && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -566,41 +815,416 @@ class _LoginPageUIState extends State<LoginPageUI> {
     
     return Column(
       children: [
+        _buildTabSwitch(isTablet),
+        if (_selectedTabIndex == 0) ...[
+          _buildInputField(
+            icon: Icons.person_outline,
+            hint: 'Username',
+            controller: usernameController,
+            constraints: constraints,
+            isTablet: isTablet,
+          ),
+          SizedBox(height: fieldSpacing),
+          _buildInputField(
+            icon: Icons.lock_outline,
+            hint: 'Password',
+            controller: passwordController,
+            constraints: constraints,
+            obscureText: _obscurePassword,
+            isTablet: isTablet,
+            suffix: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                color: const Color(0xFF666666),
+                size: isTablet ? 28 : 22.0,
+              ),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+          ),
+          SizedBox(height: fieldSpacing),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _buildForgotPassword(constraints, isTablet),
+          ),
+          SizedBox(height: buttonSpacing),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _buildLoginButton(constraints, isTablet),
+          ),
+        ] else ...[
+          _buildSmsOtpForm(constraints, isTablet, fieldSpacing, buttonSpacing),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTabSwitch(bool isTablet) {
+    final fontSize = isTablet ? 16.0 : 13.5;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.25),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (_selectedTabIndex != 0) {
+                  setState(() {
+                    _selectedTabIndex = 0;
+                  });
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: _selectedTabIndex == 0
+                      ? const LinearGradient(
+                          colors: [Color(0xFFFF6B35), Color(0xFFFF8E53)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        )
+                      : null,
+                  color: _selectedTabIndex == 0 ? null : Colors.transparent,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: _selectedTabIndex == 0
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFFFF6B35).withOpacity(0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.lock_outline,
+                      size: isTablet ? 20 : 16,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Password',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: fontSize,
+                        fontWeight: _selectedTabIndex == 0 ? FontWeight.bold : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (_selectedTabIndex != 1) {
+                  setState(() {
+                    _selectedTabIndex = 1;
+                  });
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: _selectedTabIndex == 1
+                      ? const LinearGradient(
+                          colors: [Color(0xFFFF6B35), Color(0xFFFF8E53)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        )
+                      : null,
+                  color: _selectedTabIndex == 1 ? null : Colors.transparent,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: _selectedTabIndex == 1
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFFFF6B35).withOpacity(0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.phone_android_outlined,
+                      size: isTablet ? 20 : 16,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'SMS OTP',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: fontSize,
+                        fontWeight: _selectedTabIndex == 1 ? FontWeight.bold : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmsOtpForm(BoxConstraints constraints, bool isTablet, double fieldSpacing, double buttonSpacing) {
+    final fontSize = isTablet ? 17.0 : 14.0;
+
+    return Column(
+      children: [
         _buildInputField(
-          icon: Icons.person_outline,
-          hint: 'Username',
-          controller: usernameController,
+          icon: Icons.phone_android_outlined,
+          hint: '10-digit Mobile Number',
+          controller: phoneController,
           constraints: constraints,
+          keyboardType: TextInputType.phone,
+          enabled: !_isOtpSent,
           isTablet: isTablet,
+          prefix: Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Text(
+              '+91 ',
+              style: TextStyle(
+                fontSize: isTablet ? 18.0 : 15.0,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF333333),
+              ),
+            ),
+          ),
+          suffix: _isOtpSent
+              ? IconButton(
+                  icon: const Icon(Icons.edit, size: 20, color: Color(0xFFFF6B35)),
+                  tooltip: 'Change mobile number',
+                  onPressed: () {
+                    setState(() {
+                      _isOtpSent = false;
+                      otpController.clear();
+                      _resendCountdown = 0;
+                      _resendTimer?.cancel();
+                    });
+                  },
+                )
+              : null,
         ),
         SizedBox(height: fieldSpacing),
-        _buildInputField(
-          icon: Icons.lock_outline,
-          hint: 'Password',
-          controller: passwordController,
-          constraints: constraints,
-          obscureText: _obscurePassword,
-          isTablet: isTablet,
-          suffix: IconButton(
-            icon: Icon(
-              _obscurePassword ? Icons.visibility_off : Icons.visibility,
-              color: const Color(0xFF666666),
-              size: isTablet ? 28 : 22.0,
+        if (!_isOtpSent) ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: _buildSendOtpButton(constraints, isTablet),
+          ),
+        ] else ...[
+          _buildInputField(
+            icon: Icons.pin_outlined,
+            hint: 'Enter 6-digit OTP',
+            controller: otpController,
+            constraints: constraints,
+            keyboardType: TextInputType.number,
+            isTablet: isTablet,
+          ),
+          SizedBox(height: fieldSpacing),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isOtpSent = false;
+                    otpController.clear();
+                    _resendCountdown = 0;
+                    _resendTimer?.cancel();
+                  });
+                },
+                child: Text(
+                  'Change Number',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w500,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+              _resendCountdown > 0
+                  ? Text(
+                      'Resend in ${_resendCountdown}s',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: _isSendingOtp ? null : _sendPhoneOtp,
+                      child: Text(
+                        'Resend OTP',
+                        style: TextStyle(
+                          color: const Color(0xFFFFD166),
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+            ],
+          ),
+          SizedBox(height: buttonSpacing),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _buildVerifyOtpButton(constraints, isTablet),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSendOtpButton(BoxConstraints constraints, bool isTablet) {
+    final fontSize = isTablet ? 20.0 : 16.0;
+    final iconSize = isTablet ? 22.0 : 18.0;
+    final horizontalPadding = isTablet ? 48.0 : 24.0;
+    final verticalPadding = isTablet ? 18.0 : 12.0;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF6B35), Color(0xFFFF8E53)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF6B35).withOpacity(0.3),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: _isSendingOtp ? null : _sendPhoneOtp,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
             ),
-            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            child: _isSendingOtp
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Send OTP',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(width: isTablet ? 12 : constraints.maxWidth * 0.02),
+                      Icon(
+                        Icons.send_rounded,
+                        color: Colors.white,
+                        size: iconSize,
+                      ),
+                    ],
+                  ),
           ),
         ),
-        SizedBox(height: fieldSpacing),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: _buildForgotPassword(constraints, isTablet),
+      ),
+    );
+  }
+
+  Widget _buildVerifyOtpButton(BoxConstraints constraints, bool isTablet) {
+    final fontSize = isTablet ? 20.0 : 16.0;
+    final iconSize = isTablet ? 22.0 : 18.0;
+    final horizontalPadding = isTablet ? 48.0 : 24.0;
+    final verticalPadding = isTablet ? 18.0 : 12.0;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF6B35), Color(0xFFFF8E53)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
         ),
-        SizedBox(height: buttonSpacing),
-        Align(
-          alignment: Alignment.centerRight,
-          child: _buildLoginButton(constraints, isTablet),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF6B35).withOpacity(0.3),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: isLoading ? null : _verifyOtpAndLogin,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Verify & Sign In',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(width: isTablet ? 12 : constraints.maxWidth * 0.02),
+                      Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: iconSize,
+                      ),
+                    ],
+                  ),
+          ),
         ),
-      ],
+      ),
     );
   }
 
@@ -611,7 +1235,10 @@ class _LoginPageUIState extends State<LoginPageUI> {
     required BoxConstraints constraints,
     bool obscureText = false,
     Widget? suffix,
+    Widget? prefix,
     bool isTablet = false,
+    TextInputType keyboardType = TextInputType.text,
+    bool enabled = true,
   }) {
     final fieldHeight = isTablet ? 65.0 : 56.0;
     final iconSize = isTablet ? 26.0 : 22.0;
@@ -622,7 +1249,7 @@ class _LoginPageUIState extends State<LoginPageUI> {
       height: fieldHeight,
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: enabled ? Colors.white : Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -636,10 +1263,13 @@ class _LoginPageUIState extends State<LoginPageUI> {
         children: [
           Icon(icon, color: const Color(0xFF666666), size: iconSize),
           const SizedBox(width: 12),
+          if (prefix != null) prefix,
           Expanded(
             child: TextField(
               controller: controller,
               obscureText: obscureText,
+              keyboardType: keyboardType,
+              enabled: enabled,
               decoration: InputDecoration(
                 hintText: hint,
                 border: InputBorder.none,

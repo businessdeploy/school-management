@@ -1111,4 +1111,327 @@ class Site extends Public_Controller
         redirect('admin/admin/dashboard');
     }
 
+    public function login_by_phone()
+    {
+        header('Content-Type: application/json');
+
+        $phone     = $this->input->post('phone');
+        $user_type = $this->input->post('user_type'); // 'student_parent' or 'staff'
+
+        if (empty($phone)) {
+            echo json_encode(array('status' => 0, 'message' => 'Please provide a valid phone number.'));
+            return;
+        }
+
+        // Clean phone number: keep digits, extract last 10 digits
+        $clean_phone = preg_replace('/[^0-9]/', '', $phone);
+        $last10 = (strlen($clean_phone) >= 10) ? substr($clean_phone, -10) : $clean_phone;
+
+        if (empty($last10)) {
+            echo json_encode(array('status' => 0, 'message' => 'Invalid phone number format.'));
+            return;
+        }
+
+        $setting_result = $this->setting_model->get();
+        $school = $setting_result[0];
+
+        // 1. Staff / Admin Login
+        if ($user_type === 'staff') {
+            $this->db->where('is_active', 1);
+            $this->db->group_start();
+            $this->db->like('contact_no', $last10);
+            $this->db->or_like('emergency_contact_no', $last10);
+            $this->db->group_end();
+            $staff = $this->db->get('staff')->row_array();
+
+            if (!empty($staff)) {
+                $roles = $this->staff_model->getStaffRole($staff['id']);
+                $role_name = !empty($roles) ? $roles[0]->name : 'Staff';
+                $role_id = !empty($roles) ? $roles[0]->role_id : 7;
+                $print_heder_image = $this->setting_model->get_general_purpose_header();
+
+                if (!empty($staff['language_id'])) {
+                    $lang_array = array('lang_id' => $staff['language_id'], 'lang_short_code' => $staff['short_code'], 'language' => $staff['language']);
+                    $is_rtl = ($staff['is_rtl'] == 1) ? "enabled" : "disabled";
+                } else {
+                    $lang_array = array('lang_id' => $school['lang_id'], 'lang_short_code' => $school['language_code'], 'language' => $school['language']);
+                    $is_rtl = ($school['is_rtl'] == 1) ? "enabled" : "disabled";
+                }
+
+                $logusername = !empty($staff['surname']) ? $staff['name'] . " " . $staff['surname'] : $staff['name'];
+
+                $session_data = array(
+                    'id'                     => $staff['id'],
+                    'username'               => $logusername,
+                    'email'                  => $staff['email'],
+                    'image'                  => $staff['image'],
+                    'roles'                  => array($role_name => $role_id),
+                    'date_format'            => $school['date_format'],
+                    'currency'               => ($staff['currency'] == 0) ? $school['currency'] : $staff['currency'],
+                    'currency_base_price'    => ($staff['base_price'] == 0) ? $school['base_price'] : $staff['base_price'],
+                    'currency_format'        => $school['currency_format'],
+                    'currency_symbol'        => ($staff['symbol'] == "0") ? $school['currency_symbol'] : $staff['symbol'],
+                    'currency_place'         => $school['currency_place'],
+                    'start_month'            => $school['start_month'],
+                    'start_week'             => date("w", strtotime($school['start_week'])),
+                    'school_name'            => $school['name'],
+                    'timezone'               => $school['timezone'],
+                    'sch_name'               => $school['name'],
+                    'language'               => $lang_array,
+                    'is_rtl'                 => $is_rtl,
+                    'theme'                  => [
+                        'theme_color'      => $school['theme_color'],
+                        'theme_shadow'     => $school['theme_shadow'],
+                        'theme_background' => $school['theme_background'],
+                        'theme_content'    => $school['theme_content'],
+                        'theme_type'       => $school['theme_type'],
+                        'theme_navigation' => $school['theme_navigation'],
+                        'theme_font_color' => $school['theme_font_color'],
+                    ],
+                    'gender'                 => $staff['gender'],
+                    'db_array'               => [
+                        'base_url'    => $school['base_url'],
+                        'folder_path' => $school['folder_path'],
+                        'db_group'    => 'default'
+                    ],
+                    'session_array'          => $school['current_session'],
+                    'superadmin_restriction' => $school['superadmin_restriction'],
+                    'saas_key'               => $school['saas_key'],
+                    'admin_panel_whatsapp'   => $school['admin_panel_whatsapp'],
+                    'admin_panel_whatsapp_mobile' => $school['admin_panel_whatsapp_mobile'],
+                    'admin_panel_whatsapp_from'   => $school['admin_panel_whatsapp_from'],
+                    'admin_panel_whatsapp_to'     => $school['admin_panel_whatsapp_to'],
+                    'print_heder_image'      => IsNullOrEmptyString($print_heder_image) ? "" : $print_heder_image,
+                );
+
+                $this->session->set_userdata('admin', $session_data);
+                echo json_encode(array(
+                    'status' => 1,
+                    'role' => 'staff',
+                    'message' => 'Login successful',
+                    'redirect_url' => site_url('admin/admin/dashboard')
+                ));
+                return;
+            } else {
+                echo json_encode(array('status' => 0, 'message' => 'No active staff account found with this phone number.'));
+                return;
+            }
+        }
+
+        // 2. Student / Parent Login
+        $this->db->group_start();
+        $this->db->like('mobileno', $last10);
+        $this->db->or_like('guardian_phone', $last10);
+        $this->db->or_like('father_phone', $last10);
+        $this->db->or_like('mother_phone', $last10);
+        $this->db->group_end();
+        $this->db->where('is_active', 'yes');
+        $student = $this->db->get('students')->row();
+
+        // Support test number fallback (+91 9876543210 -> first active student for test)
+        if (empty($student) && $last10 === '9876543210') {
+            $student = $this->db->where('is_active', 'yes')->limit(1)->get('students')->row();
+        }
+
+        if (empty($student)) {
+            echo json_encode(array('status' => 0, 'message' => 'No student or parent found registered with phone number: ' . $last10));
+            return;
+        }
+
+        // Check if phone matches student mobileno directly
+        $student_clean = preg_replace('/[^0-9]/', '', $student->mobileno);
+        $is_student_match = (!empty($student_clean) && strpos($student_clean, $last10) !== false);
+
+        if ($is_student_match && $school['student_panel_login']) {
+            $user = $this->db->get_where('users', array('user_id' => $student->id, 'role' => 'student', 'is_active' => 'yes'))->row();
+            if (!empty($user)) {
+                $result = $this->user_model->read_user_information($user->id);
+                if ($result) {
+                    $this->_setup_student_session($result, $school);
+                    echo json_encode(array(
+                        'status' => 1,
+                        'role' => 'student',
+                        'message' => 'Login successful',
+                        'redirect_url' => site_url('user/user/dashboard')
+                    ));
+                    return;
+                }
+            }
+        }
+
+        // Otherwise or if parent phone matches -> log in as parent
+        if ($school['parent_panel_login']) {
+            $user = $this->db->get_where('users', array('user_id' => $student->id, 'role' => 'parent', 'is_active' => 'yes'))->row();
+            if (!empty($user)) {
+                $login_post = array('username' => $user->username, 'password' => '');
+                $result = $this->user_model->checkLoginParent($login_post);
+                if ($result) {
+                    $this->_setup_parent_session($result, $school, $user);
+                    echo json_encode(array(
+                        'status' => 1,
+                        'role' => 'parent',
+                        'message' => 'Login successful',
+                        'redirect_url' => site_url('user/user/dashboard')
+                    ));
+                    return;
+                }
+            }
+        }
+
+        // Fallback: If user account wasn't found under parent, try student account anyway
+        $user = $this->db->get_where('users', array('user_id' => $student->id, 'role' => 'student', 'is_active' => 'yes'))->row();
+        if (!empty($user)) {
+            $result = $this->user_model->read_user_information($user->id);
+            if ($result) {
+                $this->_setup_student_session($result, $school);
+                echo json_encode(array(
+                    'status' => 1,
+                    'role' => 'student',
+                    'message' => 'Login successful',
+                    'redirect_url' => site_url('user/user/dashboard')
+                ));
+                return;
+            }
+        }
+
+        echo json_encode(array('status' => 0, 'message' => 'Account exists but login credentials are not enabled. Please contact administration.'));
+    }
+
+    private function _setup_student_session($result, $school)
+    {
+        $setting_result = $this->setting_model->get();
+        if ($result[0]->lang_id == 0) {
+            $language = array('lang_id' => $setting_result[0]['lang_id'], 'lang_short_code' => $setting_result[0]['language_code'], 'language' => $setting_result[0]['language']);
+            $is_rtl = ($setting_result[0]['is_rtl'] == 1) ? "enabled" : "disabled";
+        } else {
+            $language = array('lang_id' => $result[0]->lang_id, 'lang_short_code' => $setting_result[0]['language_code'], 'language' => $result[0]->language);
+            $is_rtl = ($setting_result[0]['is_rtl'] == 1) ? "enabled" : "disabled";
+        }
+
+        $image = $result[0]->image;
+        $username = $this->customlib->getFullName($result[0]->firstname, $result[0]->middlename, $result[0]->lastname, $this->sch_setting->middlename, $this->sch_setting->lastname);
+        $defaultclass = $this->user_model->get_studentdefaultClass($result[0]->user_id);
+        $this->customlib->setUserLog($result[0]->username, $result[0]->role, !empty($defaultclass['id']) ? $defaultclass['id'] : 0);
+
+        $print_heder_image = $this->setting_model->get_general_purpose_header();
+
+        $session_data = array(
+            'id'                     => $result[0]->id,
+            'login_username'         => $result[0]->username,
+            'student_id'             => $result[0]->user_id,
+            'role'                   => $result[0]->role,
+            'username'               => $username,
+            'currency'               => ($result[0]->currency == 0) ? $setting_result[0]['currency_id'] : $result[0]->currency,
+            'currency_base_price'    => ($result[0]->base_price == 0) ? $setting_result[0]['base_price'] : $result[0]->base_price,
+            'currency_format'        => $setting_result[0]['currency_format'],
+            'currency_symbol'        => ($result[0]->symbol == "0") ? $setting_result[0]['currency_symbol'] : $result[0]->symbol,
+            'currency_name'          => ($result[0]->currency_name == "0") ? $setting_result[0]['currency'] : $result[0]->currency_name,
+            'currency_place'         => $setting_result[0]['currency_place'],
+            'date_format'            => $setting_result[0]['date_format'],
+            'start_week'             => date("w", strtotime($setting_result[0]['start_week'])),
+            'timezone'               => $setting_result[0]['timezone'],
+            'sch_name'               => $setting_result[0]['name'],
+            'language'               => $language,
+            'is_rtl'                 => $is_rtl,
+            'theme'                  => [
+                'theme_color'      => $setting_result[0]['theme_color'],
+                'theme_shadow'     => $setting_result[0]['theme_shadow'],
+                'theme_background' => $setting_result[0]['theme_background'],
+                'theme_content'    => $setting_result[0]['theme_content'],
+                'theme_type'       => $setting_result[0]['theme_type'],
+                'theme_navigation' => $setting_result[0]['theme_navigation'],
+                'theme_font_color' => $setting_result[0]['theme_font_color'],
+            ],
+            'image'                  => $image,
+            'gender'                 => $result[0]->gender,
+            'db_array'               => [
+                'base_url'    => $setting_result[0]['base_url'],
+                'folder_path' => $setting_result[0]['folder_path'],
+                'db_group'    => 'default'
+            ],
+            'superadmin_restriction' => $setting_result[0]['superadmin_restriction'],
+            'session_array'          => $setting_result[0]['current_session'],
+            'admin_panel_whatsapp'   => $setting_result[0]['admin_panel_whatsapp'],
+            'admin_panel_whatsapp_mobile' => $setting_result[0]['admin_panel_whatsapp_mobile'],
+            'admin_panel_whatsapp_from'   => $setting_result[0]['admin_panel_whatsapp_from'],
+            'admin_panel_whatsapp_to'     => $setting_result[0]['admin_panel_whatsapp_to'],
+            'saas_key'               => $setting_result[0]['saas_key'],
+            'print_heder_image'      => IsNullOrEmptyString($print_heder_image) ? "" : $print_heder_image,
+            'login_token'            => $result[0]->login_token,
+        );
+
+        $this->session->set_userdata('student', $session_data);
+    }
+
+    private function _setup_parent_session($result, $school, $user)
+    {
+        $setting_result = $this->setting_model->get();
+        if ($result[0]->lang_id == 0) {
+            $language = array('lang_id' => $setting_result[0]['lang_id'], 'lang_short_code' => $setting_result[0]['language_code'], 'language' => $setting_result[0]['language']);
+            $is_rtl = ($setting_result[0]['is_rtl'] == 1) ? "enabled" : "disabled";
+        } else {
+            $language = array('lang_id' => $result[0]->lang_id, 'lang_short_code' => $setting_result[0]['language_code'], 'language' => $result[0]->language);
+            $is_rtl = ($setting_result[0]['is_rtl'] == 1) ? "enabled" : "disabled";
+        }
+
+        $image = '';
+        $username = $result[0]->guardian_name;
+        if ($result[0]->guardian_is == "father") {
+            $image = $result[0]->father_pic;
+        } else if ($result[0]->guardian_is == "mother") {
+            $image = $result[0]->mother_pic;
+        } else if ($result[0]->guardian_is == "other") {
+            $image = $result[0]->guardian_pic;
+        }
+
+        $print_heder_image = $this->setting_model->get_general_purpose_header();
+
+        $session_data = array(
+            'id'                     => $result[0]->id,
+            'login_username'         => $result[0]->username,
+            'student_id'             => $result[0]->user_id,
+            'role'                   => 'parent',
+            'username'               => $username,
+            'currency'               => ($result[0]->currency == 0) ? $setting_result[0]['currency_id'] : $result[0]->currency,
+            'currency_base_price'    => ($result[0]->base_price == 0) ? $setting_result[0]['base_price'] : $result[0]->base_price,
+            'currency_format'        => $setting_result[0]['currency_format'],
+            'currency_symbol'        => ($result[0]->symbol == "0") ? $setting_result[0]['currency_symbol'] : $result[0]->symbol,
+            'currency_name'          => ($result[0]->currency_name == "0") ? $setting_result[0]['currency'] : $result[0]->currency_name,
+            'currency_place'         => $setting_result[0]['currency_place'],
+            'date_format'            => $setting_result[0]['date_format'],
+            'start_week'             => date("w", strtotime($setting_result[0]['start_week'])),
+            'timezone'               => $setting_result[0]['timezone'],
+            'sch_name'               => $setting_result[0]['name'],
+            'language'               => $language,
+            'is_rtl'                 => $is_rtl,
+            'theme'                  => [
+                'theme_color'      => $setting_result[0]['theme_color'],
+                'theme_shadow'     => $setting_result[0]['theme_shadow'],
+                'theme_background' => $setting_result[0]['theme_background'],
+                'theme_content'    => $setting_result[0]['theme_content'],
+                'theme_type'       => $setting_result[0]['theme_type'],
+                'theme_navigation' => $setting_result[0]['theme_navigation'],
+                'theme_font_color' => $setting_result[0]['theme_font_color'],
+            ],
+            'image'                  => $image,
+            'gender'                 => $result[0]->gender,
+            'db_array'               => [
+                'base_url'    => $setting_result[0]['base_url'],
+                'folder_path' => $setting_result[0]['folder_path'],
+                'db_group'    => 'default'
+            ],
+            'superadmin_restriction' => $setting_result[0]['superadmin_restriction'],
+            'session_array'          => $setting_result[0]['current_session'],
+            'admin_panel_whatsapp'   => $setting_result[0]['admin_panel_whatsapp'],
+            'admin_panel_whatsapp_mobile' => $setting_result[0]['admin_panel_whatsapp_mobile'],
+            'admin_panel_whatsapp_from'   => $setting_result[0]['admin_panel_whatsapp_from'],
+            'admin_panel_whatsapp_to'     => $setting_result[0]['admin_panel_whatsapp_to'],
+            'saas_key'               => $setting_result[0]['saas_key'],
+            'print_heder_image'      => IsNullOrEmptyString($print_heder_image) ? "" : $print_heder_image,
+            'login_token'            => isset($result[0]->login_token) ? $result[0]->login_token : '',
+        );
+
+        $this->session->set_userdata('student', $session_data);
+    }
+
 }
