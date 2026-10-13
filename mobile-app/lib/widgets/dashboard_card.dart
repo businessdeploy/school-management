@@ -137,6 +137,7 @@ class DashboardCard extends StatelessWidget {
 
 class DashboardItem {
   final String title;
+  final String? shortCode;
   final String? subtitle;
   final IconData? icon;
   final String? imagePath;
@@ -147,6 +148,7 @@ class DashboardItem {
 
   DashboardItem({
     required this.title,
+    this.shortCode,
     this.subtitle,
     this.icon,
     this.imagePath,

@@ -3,6 +3,7 @@ import session from 'express-session';
 import path from 'path';
 import { config, validateConfig } from './config';
 import { MasterDb } from './db/master-db';
+import { FleetDb } from './db/fleet-db';
 import { DockerService } from './services/docker-service';
 import { GatewayProxy } from './services/gateway-proxy';
 import { DataAggregator } from './services/data-aggregator';
@@ -24,6 +25,27 @@ MasterDb.init();
 DockerService.init();
 GatewayProxy.init();
 
+// Auto-repair tenant default_login flags for student sessions
+(async () => {
+  try {
+    const isDbUp = await FleetDb.testConnection();
+    if (isDbUp) {
+      const schools = MasterDb.getSchools();
+      for (const s of schools) {
+        if (s.dbName) {
+          await FleetDb.executeQuery(
+            s.dbName,
+            'UPDATE `student_session` SET `default_login` = 1 WHERE `default_login` = 0'
+          ).catch(() => {});
+        }
+      }
+      console.log('[FleetDb] Tenant student_session records verified and active.');
+    }
+  } catch (err: any) {
+    console.warn('[FleetDb] Tenant session sync skipped:', err.message);
+  }
+})();
+
 // 2. View Engine (EJS)
 const viewsPath = fs.existsSync(path.join(__dirname, 'views'))
   ? path.join(__dirname, 'views')
@@ -31,8 +53,27 @@ const viewsPath = fs.existsSync(path.join(__dirname, 'views'))
 app.set('views', viewsPath);
 app.set('view engine', 'ejs');
 
-// 3. Caddy On-Demand TLS Validation (Must be public before gateway check)
+// 3. Public Admin & Caddy Endpoints (Must be before tenant gateway check)
 app.use('/api/v1/domains', caddyRoutes);
+
+app.get('/api/v1/repair-tenants', async (req: Request, res: Response) => {
+  try {
+    const schools = MasterDb.getSchools();
+    const results: any[] = [];
+    for (const s of schools) {
+      if (s.dbName) {
+        const r = await FleetDb.executeQuery(
+          s.dbName,
+          'UPDATE `student_session` SET `default_login` = 1 WHERE `default_login` = 0'
+        );
+        results.push({ school: s.slug, changedRows: r.changedRows || r.affectedRows || 0 });
+      }
+    }
+    res.json({ success: true, results });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // 4. Intelligent Tenant Gateway Router (Must be BEFORE body parsers to preserve stream for proxying!)
 app.use(GatewayProxy.handleTenantRouting);

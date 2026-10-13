@@ -467,7 +467,7 @@ class EnterpriseUIComponents {
   }
   
   /// Professional currency formatter
-  static String formatCurrency(dynamic value, {String symbol = '\$'}) {
+  static String formatCurrency(dynamic value, {String symbol = '₹'}) {
     if (value == null) return '$symbol 0.00';
     final numValue = double.tryParse(value.toString()) ?? 0.0;
     return '$symbol ${numValue.toStringAsFixed(2)}';

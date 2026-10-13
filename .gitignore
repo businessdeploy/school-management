@@ -3,6 +3,7 @@
 Thumbs.db
 .idea/
 .vscode/
+.commandcode/
 *.swp
 
 # Node / Master Dashboard

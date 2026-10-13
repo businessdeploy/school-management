@@ -139,92 +139,18 @@ class AppConfigProvider extends ChangeNotifier {
     return _cachedSecondaryColor;
   }
   String get langCode => _appConfig?['lang_code'] ?? 'en';
-  String get currency => _appConfig?['currency'] ?? 'USD';
-  String? get selectedCurrencyId => _selectedCurrencyId;
+  String get currency => 'INR';
+  String? get selectedCurrencyId => '1';
   String get dateFormat => _appConfig?['date_format'] ?? 'dd/MM/yyyy';
   String get appVersion => _appConfig?['app_version'] ?? _appConfig?['app_ver'] ?? '';
 
-  double get selectedBasePrice {
-    if (_currencyOptions.isEmpty || _selectedCurrencyId == null) return 1.0;
-    final option = _currencyOptions.firstWhere(
-      (c) => (c['id'] ?? c['currency_id'])?.toString() == _selectedCurrencyId,
-      orElse: () => {},
-    );
-    final basePrice = option['base_price'];
-    if (basePrice == null) return 1.0;
-    return double.tryParse(basePrice.toString()) ?? 1.0;
-  }
+  double get selectedBasePrice => 1.0;
 
-  String get selectedCurrencySymbol {
-    if (_currencyOptions.isEmpty || _selectedCurrencyId == null) {
-      // Fallback: Check if we have a mapping for the default currency code
-      final defaultCurrency = currency;
-      if (_currencyCodeToSymbol.containsKey(defaultCurrency)) {
-        return _currencyCodeToSymbol[defaultCurrency]!;
-      }
-      return defaultCurrency;
-    }
-    
-    final option = _currencyOptions.firstWhere(
-      (c) => (c['id'] ?? c['currency_id'])?.toString() == _selectedCurrencyId,
-      orElse: () => {},
-    );
-    
-    // Try multiple possible keys for symbol
-    final rawSymbol = option['currency_symbol']?.toString() ?? '';
-    final code = option['code']?.toString() ?? option['short_name']?.toString() ?? '';
-    
-    // Priority 1: Map the code to a proper symbol (e.g. RUB -> ₽)
-    if (code.isNotEmpty && _currencyCodeToSymbol.containsKey(code)) {
-      return _currencyCodeToSymbol[code]!;
-    }
-    
-    // Priority 2: Use the provided symbol
-    if (rawSymbol.isNotEmpty) {
-       // If the symbol is a known code, map it
-       if (rawSymbol.length > 1 && _currencyCodeToSymbol.containsKey(rawSymbol)) {
-         return _currencyCodeToSymbol[rawSymbol]!;
-       }
-       return rawSymbol;
-    }
-                   
-    // Priority 3: Try to map the default currency code
-    final defaultCurrency = currency;
-    if (_currencyCodeToSymbol.containsKey(defaultCurrency)) {
-      return _currencyCodeToSymbol[defaultCurrency]!;
-    }
-                   
-    return defaultCurrency;
-  }
+  String get selectedCurrencySymbol => '₹';
 
-  String get selectedCurrencyLabel {
-    if (_currencyOptions.isEmpty || _selectedCurrencyId == null) {
-      // If config has currency code (e.g. USD), use it. If it's a symbol like $, default to empty or USD.
-      final c = currency;
-      if (c.length > 1) return c;
-      return 'USD'; // Generic fallback for symbols
-    }
-    
-    final option = _currencyOptions.firstWhere(
-      (c) => (c['id'] ?? c['currency_id'])?.toString() == _selectedCurrencyId,
-      orElse: () => {},
-    );
-    
-    // STRICT PRIORITY: name > code > short_name
-    String? label = option['name']?.toString() ??
-                    option['code']?.toString() ?? 
-                    option['short_name']?.toString();
-                    
-    if (label == null || label.isEmpty || label.length <= 1) {
-       return currency.length > 1 ? currency : 'USD';
-    }
-                   
-    return label;
-  }
+  String get selectedCurrencyLabel => 'INR';
 
-  double convertAmount(double amount) {
-    return amount * selectedBasePrice;
-  }
+  double convertAmount(double amount) => amount;
 
   // Online Course Curriculum Settings
   // Logic: 1 = Quiz enabled, 2 = Exam enabled, 3 = Assignment enabled
@@ -368,41 +294,20 @@ class AppConfigProvider extends ChangeNotifier {
   }
 
   Future<void> loadCurrencyOptions() async {
-    _isLoadingCurrencies = true;
-    notifyListeners();
-
-    try {
-
-      final currencies = await CurrencyApi.getCurrencyList();
-      _currencyOptions = currencies;
-      
-      // Load saved currency ID if not set
-      if (_selectedCurrencyId == null || _selectedCurrencyId == 'null' || _selectedCurrencyId == '0') {
-        final prefs = await SharedPreferences.getInstance();
-        _selectedCurrencyId = prefs.getString('selected_currency_id');
-        
-        // If still null, try to find USD/Dollar as default
-        if (_selectedCurrencyId == null || _selectedCurrencyId == 'null' || _selectedCurrencyId == '0') {
-          for (final currency in _currencyOptions) {
-            final shortName = currency['short_name']?.toString() ?? '';
-            final name = currency['name']?.toString() ?? '';
-            final code = currency['code']?.toString() ?? '';
-            
-            if (shortName == 'USD' || name.contains('Dollar') || code == 'USD') {
-              _selectedCurrencyId = (currency['currency_id'] ?? currency['id'])?.toString();
-              break;
-            }
-          }
-        }
-      }
-
-
-    } catch (e) {
-
-      _currencyOptions = [];
-    }
-
     _isLoadingCurrencies = false;
+    _currencyOptions = [
+      {
+        'id': '1',
+        'currency_id': '1',
+        'name': 'Indian Rupee',
+        'short_name': 'INR',
+        'code': 'INR',
+        'currency_symbol': '₹',
+        'symbol': '₹',
+        'base_price': '1.0',
+      }
+    ];
+    _selectedCurrencyId = '1';
     notifyListeners();
   }
 

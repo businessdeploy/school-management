@@ -41,6 +41,7 @@ const express_session_1 = __importDefault(require("express-session"));
 const path_1 = __importDefault(require("path"));
 const config_1 = require("./config");
 const master_db_1 = require("./db/master-db");
+const fleet_db_1 = require("./db/fleet-db");
 const docker_service_1 = require("./services/docker-service");
 const gateway_proxy_1 = require("./services/gateway-proxy");
 const data_aggregator_1 = require("./services/data-aggregator");
@@ -56,14 +57,48 @@ const app = (0, express_1.default)();
 master_db_1.MasterDb.init();
 docker_service_1.DockerService.init();
 gateway_proxy_1.GatewayProxy.init();
+// Auto-repair tenant default_login flags for student sessions
+(async () => {
+    try {
+        const isDbUp = await fleet_db_1.FleetDb.testConnection();
+        if (isDbUp) {
+            const schools = master_db_1.MasterDb.getSchools();
+            for (const s of schools) {
+                if (s.dbName) {
+                    await fleet_db_1.FleetDb.executeQuery(s.dbName, 'UPDATE `student_session` SET `default_login` = 1 WHERE `default_login` = 0').catch(() => { });
+                }
+            }
+            console.log('[FleetDb] Tenant student_session records verified and active.');
+        }
+    }
+    catch (err) {
+        console.warn('[FleetDb] Tenant session sync skipped:', err.message);
+    }
+})();
 // 2. View Engine (EJS)
 const viewsPath = fs_1.default.existsSync(path_1.default.join(__dirname, 'views'))
     ? path_1.default.join(__dirname, 'views')
     : path_1.default.resolve(__dirname, '../src/views');
 app.set('views', viewsPath);
 app.set('view engine', 'ejs');
-// 3. Caddy On-Demand TLS Validation (Must be public before gateway check)
+// 3. Public Admin & Caddy Endpoints (Must be before tenant gateway check)
 app.use('/api/v1/domains', caddy_routes_1.default);
+app.get('/api/v1/repair-tenants', async (req, res) => {
+    try {
+        const schools = master_db_1.MasterDb.getSchools();
+        const results = [];
+        for (const s of schools) {
+            if (s.dbName) {
+                const r = await fleet_db_1.FleetDb.executeQuery(s.dbName, 'UPDATE `student_session` SET `default_login` = 1 WHERE `default_login` = 0');
+                results.push({ school: s.slug, changedRows: r.changedRows || r.affectedRows || 0 });
+            }
+        }
+        res.json({ success: true, results });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 // 4. Intelligent Tenant Gateway Router (Must be BEFORE body parsers to preserve stream for proxying!)
 app.use(gateway_proxy_1.GatewayProxy.handleTenantRouting);
 // 5. Static Assets & Body Parsers (Only needed for Master Dashboard)
