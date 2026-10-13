@@ -9,6 +9,7 @@ import { GatewayProxy } from './services/gateway-proxy';
 import { DataAggregator } from './services/data-aggregator';
 
 import authRoutes, { requireAuth } from './routes/auth-routes';
+import { csrfProtection } from './middleware/csrf';
 import schoolRoutes from './routes/school-routes';
 import analyticsRoutes from './routes/analytics-routes';
 import networkRoutes from './routes/network-routes';
@@ -85,9 +86,9 @@ app.get('/', requireAuth, async (req: Request, res: Response) => {
   });
 });
 
-app.use('/schools', requireAuth, schoolRoutes);
-app.use('/master-data', requireAuth, analyticsRoutes);
-app.use('/networks', requireAuth, networkRoutes);
+app.use('/schools', requireAuth, csrfProtection, schoolRoutes);
+app.use('/master-data', requireAuth, csrfProtection, analyticsRoutes);
+app.use('/networks', requireAuth, csrfProtection, networkRoutes);
 
 // 404 Fallback
 app.use((req: Request, res: Response) => {

@@ -145,6 +145,7 @@
 
       <!-- Password Reset Form -->
       <form action="/schools/<%= school.id %>/reset-password" method="POST" class="space-y-3 pt-1">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div>
           <label class="block text-[11px] font-semibold text-slate-300 mb-1">Reset Super Admin Password</label>
           <input type="text" name="newPassword" placeholder="Enter new password (min 6 chars)" required minlength="6" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs font-mono focus:outline-none focus:border-amber-500 transition" />
@@ -222,6 +223,7 @@
     </div>
 
     <form action="/schools/<%= school.id %>/edit" method="POST" class="space-y-4 text-xs">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div>
         <label class="block text-[11px] font-medium text-slate-300 mb-1">School Name</label>
         <input type="text" name="name" value="<%= school.name %>" required class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
@@ -283,30 +285,35 @@
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <% if (school.status === 'active') { %>
           <form action="/schools/<%= school.id %>/restart" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold border border-slate-700 transition">
               🔄 Restart
             </button>
           </form>
 
           <form action="/schools/<%= school.id %>/stop" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl text-xs font-semibold border border-slate-700 transition">
               ⏹️ Stop
             </button>
           </form>
 
           <form action="/schools/<%= school.id %>/suspend" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="w-full py-2.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl text-xs font-semibold border border-amber-500/30 transition">
               ⚠️ Suspend
             </button>
           </form>
         <% } else if (school.status === 'suspended') { %>
           <form action="/schools/<%= school.id %>/activate" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition">
               ✅ Unsuspend
             </button>
           </form>
         <% } else { %>
           <form action="/schools/<%= school.id %>/start" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition">
               ▶️ Start
             </button>
@@ -314,6 +321,7 @@
         <% } %>
 
         <form action="/schools/<%= school.id %>/delete" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this school and container?');">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button type="submit" class="w-full py-2.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold border border-rose-500/30 transition">
             🗑️ Delete
           </button>

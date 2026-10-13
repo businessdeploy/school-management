@@ -46,6 +46,7 @@ const docker_service_1 = require("./services/docker-service");
 const gateway_proxy_1 = require("./services/gateway-proxy");
 const data_aggregator_1 = require("./services/data-aggregator");
 const auth_routes_1 = __importStar(require("./routes/auth-routes"));
+const csrf_1 = require("./middleware/csrf");
 const school_routes_1 = __importDefault(require("./routes/school-routes"));
 const analytics_routes_1 = __importDefault(require("./routes/analytics-routes"));
 const network_routes_1 = __importDefault(require("./routes/network-routes"));
@@ -106,9 +107,9 @@ app.get('/', auth_routes_1.requireAuth, async (req, res) => {
         clients,
     });
 });
-app.use('/schools', auth_routes_1.requireAuth, school_routes_1.default);
-app.use('/master-data', auth_routes_1.requireAuth, analytics_routes_1.default);
-app.use('/networks', auth_routes_1.requireAuth, network_routes_1.default);
+app.use('/schools', auth_routes_1.requireAuth, csrf_1.csrfProtection, school_routes_1.default);
+app.use('/master-data', auth_routes_1.requireAuth, csrf_1.csrfProtection, analytics_routes_1.default);
+app.use('/networks', auth_routes_1.requireAuth, csrf_1.csrfProtection, network_routes_1.default);
 // 404 Fallback
 app.use((req, res) => {
     res.status(404).send(`
