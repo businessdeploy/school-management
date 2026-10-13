@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import bcrypt from 'bcryptjs';
 import { config } from '../config';
 import { MasterRepository, ensureMasterSchema } from './master-repository';
 
@@ -43,6 +44,17 @@ export interface SchoolRecord {
   updatedAt: string;
 }
 
+export interface AdminUserRecord {
+  id: string;
+  username: string;
+  passwordHash: string;
+  displayName?: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class MasterDb {
   private static resolveJsonPath(): string {
     if (process.env.MASTER_STORE_PATH) {
@@ -65,6 +77,7 @@ export class MasterDb {
   public static async init(): Promise<void> {
     await ensureMasterSchema();
     await this.importFromJsonIfNeeded();
+    await this.seedInitialAdminIfNeeded();
   }
 
   /**
@@ -150,6 +163,40 @@ export class MasterDb {
 
   public static async deleteSchool(id: string): Promise<boolean> {
     return MasterRepository.deleteSchool(id);
+  }
+
+  // ---- Admin Users ----
+  public static async getAdminUserByUsername(username: string): Promise<AdminUserRecord | undefined> {
+    return MasterRepository.getAdminUserByUsername(username);
+  }
+
+  public static async verifyAdminCredentials(
+    username: string,
+    password: string
+  ): Promise<{ username: string; role: string } | null> {
+    const user = await MasterRepository.getAdminUserByUsername(username);
+    if (!user || !user.isActive) return null;
+    if (!bcrypt.compareSync(password, user.passwordHash)) return null;
+    return { username: user.username, role: user.role };
+  }
+
+  private static async seedInitialAdminIfNeeded(): Promise<void> {
+    const existing = await MasterRepository.listAdminUsers();
+    if (existing.length > 0) return;
+
+    const now = new Date().toISOString();
+    const passwordHash = bcrypt.hashSync(config.masterAdminPassword, 10);
+    await MasterRepository.createAdminUser({
+      id: `admin_${Date.now()}`,
+      username: config.masterAdminUsername,
+      passwordHash,
+      displayName: 'Platform Owner',
+      role: 'superadmin',
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    console.log(`[MasterDb] Seeded initial admin user "${config.masterAdminUsername}".`);
   }
 
   // ---- Legacy JSON import ----

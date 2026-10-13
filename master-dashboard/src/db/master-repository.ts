@@ -1,6 +1,6 @@
 import { config } from '../config';
 import { FleetDb } from './fleet-db';
-import type { NetworkRecord, ClientRecord, SchoolRecord } from './master-db';
+import type { NetworkRecord, ClientRecord, SchoolRecord, AdminUserRecord } from './master-db';
 
 const MASTER_SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS master_migrations (
@@ -50,6 +50,17 @@ const MASTER_SCHEMA_STATEMENTS = [
     CONSTRAINT fk_schools_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
     CONSTRAINT fk_schools_network FOREIGN KEY (network_id) REFERENCES networks(id) ON DELETE SET NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS admin_users (
+    id VARCHAR(64) PRIMARY KEY,
+    username VARCHAR(191) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    display_name VARCHAR(191) NULL,
+    role VARCHAR(32) NOT NULL DEFAULT 'superadmin',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at VARCHAR(64) NOT NULL,
+    updated_at VARCHAR(64) NOT NULL,
+    UNIQUE KEY uq_admin_users_username (username)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 
 function mapNetworkRow(row: any): NetworkRecord {
@@ -92,6 +103,19 @@ function mapSchoolRow(row: any): SchoolRecord {
     storageQuotaGb: Number(row.storage_quota_gb),
     maxStudents: Number(row.max_students),
     sslStatus: row.ssl_status as SchoolRecord['sslStatus'],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapAdminUserRow(row: any): AdminUserRecord {
+  return {
+    id: row.id,
+    username: row.username,
+    passwordHash: row.password_hash,
+    displayName: row.display_name || undefined,
+    role: row.role,
+    isActive: !!row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -257,6 +281,34 @@ export class MasterRepository {
   static async deleteSchool(id: string): Promise<boolean> {
     const result: any = await masterQuery('DELETE FROM schools WHERE id = ?', [id]);
     return result?.affectedRows === 1;
+  }
+
+  // ---- Admin Users ----
+  static async listAdminUsers(): Promise<AdminUserRecord[]> {
+    const rows: any[] = await masterQuery('SELECT * FROM admin_users ORDER BY created_at ASC');
+    return rows.map(mapAdminUserRow);
+  }
+
+  static async getAdminUserByUsername(username: string): Promise<AdminUserRecord | undefined> {
+    const rows: any[] = await masterQuery('SELECT * FROM admin_users WHERE username = ? LIMIT 1', [username]);
+    return rows[0] ? mapAdminUserRow(rows[0]) : undefined;
+  }
+
+  static async createAdminUser(user: AdminUserRecord): Promise<void> {
+    await masterQuery(
+      `INSERT INTO admin_users (id, username, password_hash, display_name, role, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        user.id,
+        user.username,
+        user.passwordHash,
+        user.displayName || null,
+        user.role,
+        user.isActive ? 1 : 0,
+        user.createdAt,
+        user.updatedAt,
+      ]
+    );
   }
 
   /**

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MasterDb = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const config_1 = require("../config");
 const master_repository_1 = require("./master-repository");
 class MasterDb {
@@ -29,6 +30,7 @@ class MasterDb {
     static async init() {
         await (0, master_repository_1.ensureMasterSchema)();
         await this.importFromJsonIfNeeded();
+        await this.seedInitialAdminIfNeeded();
     }
     /**
      * Returns the normalized live host without mutating stored routing.
@@ -102,6 +104,36 @@ class MasterDb {
     }
     static async deleteSchool(id) {
         return master_repository_1.MasterRepository.deleteSchool(id);
+    }
+    // ---- Admin Users ----
+    static async getAdminUserByUsername(username) {
+        return master_repository_1.MasterRepository.getAdminUserByUsername(username);
+    }
+    static async verifyAdminCredentials(username, password) {
+        const user = await master_repository_1.MasterRepository.getAdminUserByUsername(username);
+        if (!user || !user.isActive)
+            return null;
+        if (!bcryptjs_1.default.compareSync(password, user.passwordHash))
+            return null;
+        return { username: user.username, role: user.role };
+    }
+    static async seedInitialAdminIfNeeded() {
+        const existing = await master_repository_1.MasterRepository.listAdminUsers();
+        if (existing.length > 0)
+            return;
+        const now = new Date().toISOString();
+        const passwordHash = bcryptjs_1.default.hashSync(config_1.config.masterAdminPassword, 10);
+        await master_repository_1.MasterRepository.createAdminUser({
+            id: `admin_${Date.now()}`,
+            username: config_1.config.masterAdminUsername,
+            passwordHash,
+            displayName: 'Platform Owner',
+            role: 'superadmin',
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+        });
+        console.log(`[MasterDb] Seeded initial admin user "${config_1.config.masterAdminUsername}".`);
     }
     // ---- Legacy JSON import ----
     static assertUnique(values, label) {

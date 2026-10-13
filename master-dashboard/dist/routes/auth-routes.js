@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireAuth = requireAuth;
 const express_1 = require("express");
-const config_1 = require("../config");
+const master_db_1 = require("../db/master-db");
 const router = (0, express_1.Router)();
 const MAX_FAILED_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
@@ -52,7 +52,7 @@ router.get('/login', (req, res) => {
     }
     res.render('login', { error: null });
 });
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
     const key = throttleKey(req);
     if (isBlocked(key)) {
         return res.status(429).render('login', {
@@ -60,7 +60,8 @@ router.post('/login', (req, res) => {
         });
     }
     const { username, password } = req.body;
-    if (username === config_1.config.masterAdminUsername && password === config_1.config.masterAdminPassword) {
+    const admin = await master_db_1.MasterDb.verifyAdminCredentials(username, password);
+    if (admin) {
         clearFailures(key);
         req.session.regenerate((err) => {
             if (err) {
@@ -70,7 +71,7 @@ router.post('/login', (req, res) => {
                 });
             }
             req.session.isAuthenticated = true;
-            req.session.user = { username, role: 'Network Super Admin' };
+            req.session.user = { username: admin.username, role: admin.role };
             return res.redirect('/');
         });
         return;

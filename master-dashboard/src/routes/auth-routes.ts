@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { config } from '../config';
+import { MasterDb } from '../db/master-db';
 
 const router = Router();
 
@@ -63,7 +63,7 @@ router.get('/login', (req: Request, res: Response) => {
   res.render('login', { error: null });
 });
 
-router.post('/login', (req: Request, res: Response) => {
+router.post('/login', async (req: Request, res: Response) => {
   const key = throttleKey(req);
   if (isBlocked(key)) {
     return res.status(429).render('login', {
@@ -73,7 +73,8 @@ router.post('/login', (req: Request, res: Response) => {
 
   const { username, password } = req.body;
 
-  if (username === config.masterAdminUsername && password === config.masterAdminPassword) {
+  const admin = await MasterDb.verifyAdminCredentials(username, password);
+  if (admin) {
     clearFailures(key);
     req.session.regenerate((err) => {
       if (err) {
@@ -83,7 +84,7 @@ router.post('/login', (req: Request, res: Response) => {
         });
       }
       (req.session as any).isAuthenticated = true;
-      (req.session as any).user = { username, role: 'Network Super Admin' };
+      (req.session as any).user = { username: admin.username, role: admin.role };
       return res.redirect('/');
     });
     return;
