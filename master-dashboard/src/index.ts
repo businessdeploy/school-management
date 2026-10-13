@@ -4,6 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { config, validateConfig } from './config';
 import { MasterDb } from './db/master-db';
+import { FleetDb } from './db/fleet-db';
 import { DbSessionStore } from './db/session-store';
 import { DockerService } from './services/docker-service';
 import { GatewayProxy } from './services/gateway-proxy';
@@ -25,6 +26,9 @@ import fs from 'fs';
 validateConfig();
 
 const app = express();
+app.set('trust proxy', 1);
+
+let lastError: any = null;
 
 // 1. Initialize Subsystems
 DockerService.init();
@@ -37,8 +41,57 @@ const viewsPath = fs.existsSync(path.join(__dirname, 'views'))
 app.set('views', viewsPath);
 app.set('view engine', 'ejs');
 
-// 3. Public Caddy On-Demand TLS Endpoint (Must be before tenant gateway check)
+// 3. Public Caddy On-Demand TLS Endpoint & Diagnostics (Must be before tenant gateway check)
 app.use('/api/v1/domains', caddyRoutes);
+
+app.get('/api/v1/health-diag', async (req: Request, res: Response) => {
+  let dbStatus = 'ok';
+  let dbError: string | null = null;
+  try {
+    const test = await FleetDb.executeQuery(config.fleetDb.masterDatabase, 'SELECT 1 as test');
+  } catch (err: any) {
+    dbStatus = 'error';
+    dbError = err?.message || String(err);
+  }
+
+  let sessionTable = 'unknown';
+  try {
+    const rows = await FleetDb.executeQuery(config.fleetDb.masterDatabase, 'SHOW TABLES LIKE "sessions"');
+    sessionTable = rows && rows.length > 0 ? 'exists' : 'missing';
+  } catch (err: any) {
+    sessionTable = `error: ${err.message}`;
+  }
+
+  let phpPort8080 = 'checking';
+  try {
+    const http = await import('http');
+    await new Promise((resolve) => {
+      const ping = http.get('http://127.0.0.1:8080', { timeout: 2000 }, (resp) => {
+        phpPort8080 = `alive_status_${resp.statusCode}`;
+        resolve(true);
+      });
+      ping.on('error', (e) => {
+        phpPort8080 = `unreachable: ${e.message}`;
+        resolve(false);
+      });
+    });
+  } catch (e: any) {
+    phpPort8080 = `error: ${e.message}`;
+  }
+
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    viewsPath,
+    viewsExist: fs.existsSync(viewsPath),
+    loginEjs: fs.existsSync(path.join(viewsPath, 'login.ejs')),
+    dbStatus,
+    dbError,
+    sessionTable,
+    phpPort8080,
+    lastError,
+  });
+});
 
 // 4. Intelligent Tenant Gateway Router (Must be BEFORE body parsers to preserve stream for proxying!)
 app.use(GatewayProxy.handleTenantRouting);
@@ -115,6 +168,17 @@ app.use((req: Request, res: Response) => {
 app.use((err: any, req: Request, res: Response, next: any) => {
   const referenceId = crypto.randomUUID();
   console.error(`[MASTER CONTROL PLANE ERROR] ref=${referenceId}:`, err);
+  lastError = {
+    ref: referenceId,
+    message: err?.message || String(err),
+    stack: err?.stack,
+    code: err?.code,
+    name: err?.name,
+    path: req.originalUrl || req.path,
+    method: req.method,
+    host: req.headers.host,
+    time: new Date().toISOString(),
+  };
   if (res.headersSent) {
     return next(err);
   }

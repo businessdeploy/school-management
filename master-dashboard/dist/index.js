@@ -42,6 +42,7 @@ const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
 const config_1 = require("./config");
 const master_db_1 = require("./db/master-db");
+const fleet_db_1 = require("./db/fleet-db");
 const session_store_1 = require("./db/session-store");
 const docker_service_1 = require("./services/docker-service");
 const gateway_proxy_1 = require("./services/gateway-proxy");
@@ -59,6 +60,8 @@ const caddy_routes_1 = __importDefault(require("./routes/caddy-routes"));
 const fs_1 = __importDefault(require("fs"));
 (0, config_1.validateConfig)();
 const app = (0, express_1.default)();
+app.set('trust proxy', 1);
+let lastError = null;
 // 1. Initialize Subsystems
 docker_service_1.DockerService.init();
 gateway_proxy_1.GatewayProxy.init();
@@ -68,8 +71,56 @@ const viewsPath = fs_1.default.existsSync(path_1.default.join(__dirname, 'views'
     : path_1.default.resolve(__dirname, '../src/views');
 app.set('views', viewsPath);
 app.set('view engine', 'ejs');
-// 3. Public Caddy On-Demand TLS Endpoint (Must be before tenant gateway check)
+// 3. Public Caddy On-Demand TLS Endpoint & Diagnostics (Must be before tenant gateway check)
 app.use('/api/v1/domains', caddy_routes_1.default);
+app.get('/api/v1/health-diag', async (req, res) => {
+    let dbStatus = 'ok';
+    let dbError = null;
+    try {
+        const test = await fleet_db_1.FleetDb.executeQuery(config_1.config.fleetDb.masterDatabase, 'SELECT 1 as test');
+    }
+    catch (err) {
+        dbStatus = 'error';
+        dbError = err?.message || String(err);
+    }
+    let sessionTable = 'unknown';
+    try {
+        const rows = await fleet_db_1.FleetDb.executeQuery(config_1.config.fleetDb.masterDatabase, 'SHOW TABLES LIKE "sessions"');
+        sessionTable = rows && rows.length > 0 ? 'exists' : 'missing';
+    }
+    catch (err) {
+        sessionTable = `error: ${err.message}`;
+    }
+    let phpPort8080 = 'checking';
+    try {
+        const http = await Promise.resolve().then(() => __importStar(require('http')));
+        await new Promise((resolve) => {
+            const ping = http.get('http://127.0.0.1:8080', { timeout: 2000 }, (resp) => {
+                phpPort8080 = `alive_status_${resp.statusCode}`;
+                resolve(true);
+            });
+            ping.on('error', (e) => {
+                phpPort8080 = `unreachable: ${e.message}`;
+                resolve(false);
+            });
+        });
+    }
+    catch (e) {
+        phpPort8080 = `error: ${e.message}`;
+    }
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        viewsPath,
+        viewsExist: fs_1.default.existsSync(viewsPath),
+        loginEjs: fs_1.default.existsSync(path_1.default.join(viewsPath, 'login.ejs')),
+        dbStatus,
+        dbError,
+        sessionTable,
+        phpPort8080,
+        lastError,
+    });
+});
 // 4. Intelligent Tenant Gateway Router (Must be BEFORE body parsers to preserve stream for proxying!)
 app.use(gateway_proxy_1.GatewayProxy.handleTenantRouting);
 // 5. Static Assets & Body Parsers (Only needed for Master Dashboard)
@@ -134,6 +185,17 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
     const referenceId = crypto_1.default.randomUUID();
     console.error(`[MASTER CONTROL PLANE ERROR] ref=${referenceId}:`, err);
+    lastError = {
+        ref: referenceId,
+        message: err?.message || String(err),
+        stack: err?.stack,
+        code: err?.code,
+        name: err?.name,
+        path: req.originalUrl || req.path,
+        method: req.method,
+        host: req.headers.host,
+        time: new Date().toISOString(),
+    };
     if (res.headersSent) {
         return next(err);
     }
