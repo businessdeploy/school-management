@@ -7,6 +7,8 @@ import { SsoService } from '../services/sso-service';
 import { EasypanelService } from '../services/easypanel-service';
 import { config } from '../config';
 import { validateSlug, validateDomain, validateBoundedInt } from '../validation';
+import { requirePermission } from '../middleware/permissions';
+import { PERMISSIONS } from '../permissions';
 
 const router = Router();
 
@@ -58,7 +60,7 @@ router.get('/new', async (req: Request, res: Response) => {
 });
 
 // 3. Create School (End-to-End Onboarding)
-router.post('/create', async (req: Request, res: Response) => {
+router.post('/create', requirePermission(PERMISSIONS.SCHOOLS_CREATE), async (req: Request, res: Response) => {
   const {
     name,
     slug,
@@ -246,7 +248,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
 });
 
 // 5. 1-Click Master Admin SSO Login (Direct Impersonation)
-router.get('/:id/sso-login', async (req: Request, res: Response) => {
+router.get('/:id/sso-login', requirePermission(PERMISSIONS.TENANT_ACCESS_ISSUE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
@@ -264,7 +266,7 @@ router.get('/:id/sso-login', async (req: Request, res: Response) => {
 });
 
 // 6. Direct Super Admin Password Reset
-router.post('/:id/reset-password', async (req: Request, res: Response) => {
+router.post('/:id/reset-password', requirePermission(PERMISSIONS.TENANT_ACCESS_ISSUE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
@@ -283,7 +285,7 @@ router.post('/:id/reset-password', async (req: Request, res: Response) => {
 });
 
 // 7. 1-Click Database SQL Backup Download
-router.get('/:id/backup-db', async (req: Request, res: Response) => {
+router.get('/:id/backup-db', requirePermission(PERMISSIONS.BACKUPS_DOWNLOAD), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
@@ -301,7 +303,7 @@ router.get('/:id/backup-db', async (req: Request, res: Response) => {
 });
 
 // 8. Update School Configuration & Quotas
-router.post('/:id/edit', async (req: Request, res: Response) => {
+router.post('/:id/edit', requirePermission(PERMISSIONS.SCHOOLS_EDIT), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
@@ -360,7 +362,7 @@ router.post('/:id/edit', async (req: Request, res: Response) => {
 });
 
 // 9. Quick Status Toggle
-router.post('/:id/set-status', async (req: Request, res: Response) => {
+router.post('/:id/set-status', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
@@ -379,7 +381,7 @@ router.post('/:id/set-status', async (req: Request, res: Response) => {
 });
 
 // 10. Lifecycle Actions
-router.post('/:id/start', async (req: Request, res: Response) => {
+router.post('/:id/start', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
     await DockerService.startContainer(school.containerName);
@@ -388,7 +390,7 @@ router.post('/:id/start', async (req: Request, res: Response) => {
   res.redirect(`/schools/${req.params.id}?success=Container started successfully.`);
 });
 
-router.post('/:id/stop', async (req: Request, res: Response) => {
+router.post('/:id/stop', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
     await DockerService.stopContainer(school.containerName);
@@ -397,7 +399,7 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
   res.redirect(`/schools/${req.params.id}?success=Container stopped.`);
 });
 
-router.post('/:id/restart', async (req: Request, res: Response) => {
+router.post('/:id/restart', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
     await DockerService.restartContainer(school.containerName);
@@ -405,7 +407,7 @@ router.post('/:id/restart', async (req: Request, res: Response) => {
   res.redirect(`/schools/${req.params.id}?success=Container restarted successfully.`);
 });
 
-router.post('/:id/suspend', async (req: Request, res: Response) => {
+router.post('/:id/suspend', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
     await MasterDb.updateSchool(school.id, { status: 'suspended' });
@@ -413,7 +415,7 @@ router.post('/:id/suspend', async (req: Request, res: Response) => {
   res.redirect(`/schools/${req.params.id}?success=School suspended. Public traffic blocked.`);
 });
 
-router.post('/:id/activate', async (req: Request, res: Response) => {
+router.post('/:id/activate', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
     await MasterDb.updateSchool(school.id, { status: 'active' });
@@ -421,7 +423,7 @@ router.post('/:id/activate', async (req: Request, res: Response) => {
   res.redirect(`/schools/${req.params.id}?success=School reactivated.`);
 });
 
-router.post('/:id/delete', async (req: Request, res: Response) => {
+router.post('/:id/delete', requirePermission(PERMISSIONS.SCHOOLS_PURGE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
     await DockerService.removeContainer(school.containerName);

@@ -3,6 +3,8 @@ import { MasterDb } from '../db/master-db';
 import { DnsService } from '../services/dns-service';
 import { EasypanelService } from '../services/easypanel-service';
 import { validateDomain } from '../validation';
+import { requirePermission } from '../middleware/permissions';
+import { PERMISSIONS } from '../permissions';
 
 const router = Router();
 
@@ -19,7 +21,7 @@ router.get('/', async (req: Request, res: Response) => {
   });
 });
 
-router.post('/create', async (req: Request, res: Response) => {
+router.post('/create', requirePermission(PERMISSIONS.NETWORKS_MANAGE), async (req: Request, res: Response) => {
   const { name, rootDomain, description } = req.body;
   if (!name) {
     return res.redirect('/networks?error=' + encodeURIComponent('Network name is required.'));
@@ -46,7 +48,7 @@ router.post('/create', async (req: Request, res: Response) => {
   res.redirect('/networks');
 });
 
-router.post('/verify-domain', async (req: Request, res: Response) => {
+router.post('/verify-domain', requirePermission(PERMISSIONS.NETWORKS_MANAGE), async (req: Request, res: Response) => {
   const { domain, expectedTarget } = req.body;
   const networks = await MasterDb.getNetworks();
   const schools = await MasterDb.getSchools();
@@ -62,7 +64,7 @@ router.post('/verify-domain', async (req: Request, res: Response) => {
   });
 });
 
-router.post('/bind-domain', async (req: Request, res: Response) => {
+router.post('/bind-domain', requirePermission(PERMISSIONS.NETWORKS_MANAGE), async (req: Request, res: Response) => {
   const { schoolId, customDomain } = req.body;
 
   const school = await MasterDb.getSchoolById(schoolId);

@@ -5,6 +5,8 @@ const master_db_1 = require("../db/master-db");
 const dns_service_1 = require("../services/dns-service");
 const easypanel_service_1 = require("../services/easypanel-service");
 const validation_1 = require("../validation");
+const permissions_1 = require("../middleware/permissions");
+const permissions_2 = require("../permissions");
 const router = (0, express_1.Router)();
 router.get('/', async (req, res) => {
     const networks = await master_db_1.MasterDb.getNetworks();
@@ -18,7 +20,7 @@ router.get('/', async (req, res) => {
         success: req.query.success || null,
     });
 });
-router.post('/create', async (req, res) => {
+router.post('/create', (0, permissions_1.requirePermission)(permissions_2.PERMISSIONS.NETWORKS_MANAGE), async (req, res) => {
     const { name, rootDomain, description } = req.body;
     if (!name) {
         return res.redirect('/networks?error=' + encodeURIComponent('Network name is required.'));
@@ -41,7 +43,7 @@ router.post('/create', async (req, res) => {
     });
     res.redirect('/networks');
 });
-router.post('/verify-domain', async (req, res) => {
+router.post('/verify-domain', (0, permissions_1.requirePermission)(permissions_2.PERMISSIONS.NETWORKS_MANAGE), async (req, res) => {
     const { domain, expectedTarget } = req.body;
     const networks = await master_db_1.MasterDb.getNetworks();
     const schools = await master_db_1.MasterDb.getSchools();
@@ -54,7 +56,7 @@ router.post('/verify-domain', async (req, res) => {
         dnsResult,
     });
 });
-router.post('/bind-domain', async (req, res) => {
+router.post('/bind-domain', (0, permissions_1.requirePermission)(permissions_2.PERMISSIONS.NETWORKS_MANAGE), async (req, res) => {
     const { schoolId, customDomain } = req.body;
     const school = await master_db_1.MasterDb.getSchoolById(schoolId);
     if (!school) {
