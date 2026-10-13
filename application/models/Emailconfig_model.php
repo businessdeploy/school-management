@@ -94,7 +94,36 @@ class Emailconfig_model extends MY_Model
         $this->db->select()->from('email_config');
         $this->db->where('is_active', 'yes');
         $query = $this->db->get();
-        return $query->row();
+        $row = $query->row();
+
+        $env_host = getenv('SMTP_HOST') ? getenv('SMTP_HOST') : 'in-v3.mailjet.com';
+        $env_port = getenv('SMTP_PORT') ? getenv('SMTP_PORT') : '587';
+        $env_user = getenv('SMTP_USER') ? getenv('SMTP_USER') : 'f04a53db44f9d2294fcc94eb01fe88f5';
+        $env_pass = (getenv('SMTP_PASSWORD') !== false && getenv('SMTP_PASSWORD') !== '')
+            ? getenv('SMTP_PASSWORD')
+            : ((getenv('SMTP_PASS') !== false && getenv('SMTP_PASS') !== '')
+                ? getenv('SMTP_PASS')
+                : '9d221e3e6866815974689033a57eaa46');
+        $env_email = getenv('SMTP_FROM_EMAIL') ? getenv('SMTP_FROM_EMAIL') : 'nitin@businessdeploy.com';
+        $env_secure = (getenv('SMTP_SECURE') === 'ssl' || getenv('SMTP_PORT') === '465') ? 'ssl' : 'tls';
+
+        if (empty($row) || empty($row->smtp_server) || $row->email_type === 'sendmail') {
+            if (!empty($env_host)) {
+                $obj = new stdClass();
+                $obj->id = 1;
+                $obj->email_type = 'smtp';
+                $obj->smtp_server = $env_host;
+                $obj->smtp_port = $env_port;
+                $obj->smtp_username = $env_user;
+                $obj->smtp_password = $env_pass;
+                $obj->smtp_email = $env_email;
+                $obj->ssl_tls = $env_secure;
+                $obj->smtp_auth = 'true';
+                $obj->is_active = 'yes';
+                return $obj;
+            }
+        }
+        return $row;
     }
 
 }

@@ -31,7 +31,7 @@ export class MailService {
                 }
               : undefined,
           tls: {
-            rejectUnauthorized: config.env === 'production',
+            rejectUnauthorized: false,
           },
         });
         console.log(`[MailService] Initialized SMTP transport -> ${config.smtp.host}:${config.smtp.port}`);

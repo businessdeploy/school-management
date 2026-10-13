@@ -46,12 +46,15 @@ exports.config = {
     dockerNetwork: process.env.DOCKER_NETWORK || 'smartschool_network',
     // SMTP Email Configuration for Magic Links & Notifications
     smtp: {
-        host: process.env.SMTP_HOST || '',
+        host: process.env.SMTP_HOST || 'in-v3.mailjet.com',
         port: parseInt(process.env.SMTP_PORT || '587', 10),
-        secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
-        user: process.env.SMTP_USER || '',
-        pass: process.env.SMTP_PASS || '',
-        from: process.env.SMTP_FROM || 'Prime School Fleet Control <no-reply@businessdeploy.com>',
+        secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465' || process.env.SMTP_SECURE === 'ssl',
+        user: process.env.SMTP_USER || 'f04a53db44f9d2294fcc94eb01fe88f5',
+        pass: process.env.SMTP_PASS || process.env.SMTP_PASSWORD || '9d221e3e6866815974689033a57eaa46',
+        from: process.env.SMTP_FROM ||
+            (process.env.SMTP_FROM_EMAIL
+                ? `"${process.env.SMTP_FROM_NAME || 'Primeskill Solutions Pvt Ltd'}" <${process.env.SMTP_FROM_EMAIL}>`
+                : '"Primeskill Solutions Pvt Ltd" <nitin@businessdeploy.com>'),
     },
 };
 /**

@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { config } from '../config';
 import { MasterRepository, ensureMasterSchema } from './master-repository';
+import { FleetDb } from './fleet-db';
 
 export interface NetworkRecord {
   id: string;
@@ -115,6 +116,7 @@ export class MasterDb {
     await ensureMasterSchema();
     await this.importFromJsonIfNeeded();
     await this.seedInitialAdminIfNeeded();
+    await this.syncTenantEmailConfigs();
   }
 
   /**
@@ -248,6 +250,48 @@ export class MasterDb {
         updatedAt: now,
       });
       console.log('[MasterDb] Seeded superadmin user "nitin@businessdeploy.com".');
+    }
+  }
+
+  private static async syncTenantEmailConfigs(): Promise<void> {
+    try {
+      const schools = await MasterRepository.listSchools();
+      const fromEmail = config.smtp.from.includes('<')
+        ? (config.smtp.from.match(/<([^>]+)>/)?.[1] || 'nitin@businessdeploy.com')
+        : (process.env.SMTP_FROM_EMAIL || 'nitin@businessdeploy.com');
+
+      for (const school of schools) {
+        if (!school.dbName) continue;
+        try {
+          await FleetDb.executeQuery(
+            school.dbName,
+            `UPDATE \`email_config\` SET 
+              \`email_type\` = 'smtp', 
+              \`smtp_server\` = ?, 
+              \`smtp_port\` = ?, 
+              \`smtp_username\` = ?, 
+              \`smtp_password\` = ?, 
+              \`smtp_email\` = ?, 
+              \`ssl_tls\` = ?, 
+              \`smtp_auth\` = 'true', 
+              \`is_active\` = 'yes' 
+             WHERE \`id\` = 1`,
+            [
+              config.smtp.host,
+              String(config.smtp.port),
+              config.smtp.user,
+              config.smtp.pass,
+              fromEmail,
+              config.smtp.secure ? 'ssl' : 'tls',
+            ]
+          );
+          console.log(`[MasterDb] Synchronized Mailjet SMTP config to tenant DB: ${school.dbName}`);
+        } catch (tenantErr: any) {
+          console.warn(`[MasterDb] Notice: Could not sync email config to ${school.dbName}:`, tenantErr.message);
+        }
+      }
+    } catch (err: any) {
+      console.warn('[MasterDb] Notice: Tenant email config sync warning:', err.message);
     }
   }
 

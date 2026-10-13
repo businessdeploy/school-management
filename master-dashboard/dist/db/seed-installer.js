@@ -60,6 +60,34 @@ class SeedInstaller {
         const timezone = options.timezone || 'UTC';
         const currency = options.currencySymbol || '$';
         await fleet_db_1.FleetDb.executeQuery(dbName, `UPDATE \`sch_settings\` SET \`name\` = ?, \`email\` = ?, \`base_url\` = ?, \`currency_symbol\` = ?, \`timezone\` = ?, \`admin_logo\` = '1.svg', \`admin_small_logo\` = '1.svg', \`image\` = '1.svg', \`app_logo\` = '1.svg' WHERE \`id\` = 1`, [options.name, options.adminEmail, baseUrl, currency, timezone]);
+        // 5b. Pre-configure Platform Mailjet SMTP
+        const fromEmail = config_1.config.smtp.from.includes('<')
+            ? (config_1.config.smtp.from.match(/<([^>]+)>/)?.[1] || 'nitin@businessdeploy.com')
+            : (process.env.SMTP_FROM_EMAIL || 'nitin@businessdeploy.com');
+        try {
+            await fleet_db_1.FleetDb.executeQuery(dbName, `UPDATE \`email_config\` SET 
+          \`email_type\` = 'smtp', 
+          \`smtp_server\` = ?, 
+          \`smtp_port\` = ?, 
+          \`smtp_username\` = ?, 
+          \`smtp_password\` = ?, 
+          \`smtp_email\` = ?, 
+          \`ssl_tls\` = ?, 
+          \`smtp_auth\` = 'true', 
+          \`is_active\` = 'yes' 
+         WHERE \`id\` = 1`, [
+                config_1.config.smtp.host,
+                String(config_1.config.smtp.port),
+                config_1.config.smtp.user,
+                config_1.config.smtp.pass,
+                fromEmail,
+                config_1.config.smtp.secure ? 'ssl' : 'tls',
+            ]);
+            console.log(`[Provisioner] Seeded Mailjet SMTP email config for ${dbName}`);
+        }
+        catch (e) {
+            console.warn(`[Provisioner] Notice: email_config table setup note for ${dbName}:`, e.message);
+        }
         // 6. Insert / Update Super Admin Staff
         const adminPass = options.adminPassword || 'Admin@123456';
         // PHP password_hash uses bcrypt ($2y$), Node's bcrypt matches verification

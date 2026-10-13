@@ -74,6 +74,38 @@ export class SeedInstaller {
       [options.name, options.adminEmail, baseUrl, currency, timezone]
     );
 
+    // 5b. Pre-configure Platform Mailjet SMTP
+    const fromEmail = config.smtp.from.includes('<')
+      ? (config.smtp.from.match(/<([^>]+)>/)?.[1] || 'nitin@businessdeploy.com')
+      : (process.env.SMTP_FROM_EMAIL || 'nitin@businessdeploy.com');
+    try {
+      await FleetDb.executeQuery(
+        dbName,
+        `UPDATE \`email_config\` SET 
+          \`email_type\` = 'smtp', 
+          \`smtp_server\` = ?, 
+          \`smtp_port\` = ?, 
+          \`smtp_username\` = ?, 
+          \`smtp_password\` = ?, 
+          \`smtp_email\` = ?, 
+          \`ssl_tls\` = ?, 
+          \`smtp_auth\` = 'true', 
+          \`is_active\` = 'yes' 
+         WHERE \`id\` = 1`,
+        [
+          config.smtp.host,
+          String(config.smtp.port),
+          config.smtp.user,
+          config.smtp.pass,
+          fromEmail,
+          config.smtp.secure ? 'ssl' : 'tls',
+        ]
+      );
+      console.log(`[Provisioner] Seeded Mailjet SMTP email config for ${dbName}`);
+    } catch (e: any) {
+      console.warn(`[Provisioner] Notice: email_config table setup note for ${dbName}:`, e.message);
+    }
+
     // 6. Insert / Update Super Admin Staff
     const adminPass = options.adminPassword || 'Admin@123456';
     // PHP password_hash uses bcrypt ($2y$), Node's bcrypt matches verification

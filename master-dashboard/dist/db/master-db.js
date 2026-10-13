@@ -10,6 +10,7 @@ const crypto_1 = __importDefault(require("crypto"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const config_1 = require("../config");
 const master_repository_1 = require("./master-repository");
+const fleet_db_1 = require("./fleet-db");
 class MasterDb {
     static resolveJsonPath() {
         if (process.env.MASTER_STORE_PATH) {
@@ -32,6 +33,7 @@ class MasterDb {
         await (0, master_repository_1.ensureMasterSchema)();
         await this.importFromJsonIfNeeded();
         await this.seedInitialAdminIfNeeded();
+        await this.syncTenantEmailConfigs();
     }
     /**
      * Returns the normalized live host without mutating stored routing.
@@ -151,6 +153,45 @@ class MasterDb {
                 updatedAt: now,
             });
             console.log('[MasterDb] Seeded superadmin user "nitin@businessdeploy.com".');
+        }
+    }
+    static async syncTenantEmailConfigs() {
+        try {
+            const schools = await master_repository_1.MasterRepository.listSchools();
+            const fromEmail = config_1.config.smtp.from.includes('<')
+                ? (config_1.config.smtp.from.match(/<([^>]+)>/)?.[1] || 'nitin@businessdeploy.com')
+                : (process.env.SMTP_FROM_EMAIL || 'nitin@businessdeploy.com');
+            for (const school of schools) {
+                if (!school.dbName)
+                    continue;
+                try {
+                    await fleet_db_1.FleetDb.executeQuery(school.dbName, `UPDATE \`email_config\` SET 
+              \`email_type\` = 'smtp', 
+              \`smtp_server\` = ?, 
+              \`smtp_port\` = ?, 
+              \`smtp_username\` = ?, 
+              \`smtp_password\` = ?, 
+              \`smtp_email\` = ?, 
+              \`ssl_tls\` = ?, 
+              \`smtp_auth\` = 'true', 
+              \`is_active\` = 'yes' 
+             WHERE \`id\` = 1`, [
+                        config_1.config.smtp.host,
+                        String(config_1.config.smtp.port),
+                        config_1.config.smtp.user,
+                        config_1.config.smtp.pass,
+                        fromEmail,
+                        config_1.config.smtp.secure ? 'ssl' : 'tls',
+                    ]);
+                    console.log(`[MasterDb] Synchronized Mailjet SMTP config to tenant DB: ${school.dbName}`);
+                }
+                catch (tenantErr) {
+                    console.warn(`[MasterDb] Notice: Could not sync email config to ${school.dbName}:`, tenantErr.message);
+                }
+            }
+        }
+        catch (err) {
+            console.warn('[MasterDb] Notice: Tenant email config sync warning:', err.message);
         }
     }
     static async listAdminUsers() {

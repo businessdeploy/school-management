@@ -870,7 +870,7 @@ CREATE TABLE `email_config` (
 --
 
 INSERT INTO `email_config` (`id`, `email_type`, `smtp_server`, `smtp_port`, `smtp_email`, `smtp_username`, `smtp_password`, `ssl_tls`, `smtp_auth`, `api_key`, `api_secret`, `region`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, 'sendmail', NULL, NULL, NULL, NULL, NULL, NULL, '', NULL, NULL, NULL, 'yes', '2020-02-28 13:46:03', '2025-12-27 07:45:38');
+(1, 'smtp', 'in-v3.mailjet.com', '587', 'nitin@businessdeploy.com', 'f04a53db44f9d2294fcc94eb01fe88f5', '9d221e3e6866815974689033a57eaa46', 'tls', 'true', NULL, NULL, NULL, 'yes', '2020-02-28 13:46:03', '2026-10-13 12:00:00');
 
 -- --------------------------------------------------------
 
