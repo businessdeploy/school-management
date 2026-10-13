@@ -11,9 +11,12 @@ import { DataAggregator } from './services/data-aggregator';
 
 import authRoutes, { requireAuth } from './routes/auth-routes';
 import { csrfProtection } from './middleware/csrf';
+import { requirePermission } from './middleware/permissions';
+import { PERMISSIONS } from './permissions';
 import schoolRoutes from './routes/school-routes';
 import analyticsRoutes from './routes/analytics-routes';
 import networkRoutes from './routes/network-routes';
+import userRoutes from './routes/user-routes';
 import caddyRoutes from './routes/caddy-routes';
 
 import fs from 'fs';
@@ -90,6 +93,7 @@ app.get('/', requireAuth, async (req: Request, res: Response) => {
 app.use('/schools', requireAuth, csrfProtection, schoolRoutes);
 app.use('/master-data', requireAuth, csrfProtection, analyticsRoutes);
 app.use('/networks', requireAuth, csrfProtection, networkRoutes);
+app.use('/users', requireAuth, csrfProtection, requirePermission(PERMISSIONS.USERS_MANAGE), userRoutes);
 
 // 404 Fallback
 app.use((req: Request, res: Response) => {

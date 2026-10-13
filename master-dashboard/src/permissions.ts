@@ -6,7 +6,19 @@ export const PERMISSIONS = {
   TENANT_ACCESS_ISSUE: 'tenant_access.issue',
   BACKUPS_DOWNLOAD: 'backups.download',
   NETWORKS_MANAGE: 'networks.manage',
+  USERS_MANAGE: 'users.manage',
 } as const;
+
+export const ROLES = [
+  'superadmin',
+  'operations_admin',
+  'network_admin',
+  'support_agent',
+  'finance_manager',
+  'auditor',
+] as const;
+
+export type Role = (typeof ROLES)[number];
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 

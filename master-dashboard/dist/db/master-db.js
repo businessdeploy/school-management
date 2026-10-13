@@ -135,6 +135,30 @@ class MasterDb {
         });
         console.log(`[MasterDb] Seeded initial admin user "${config_1.config.masterAdminUsername}".`);
     }
+    static async listAdminUsers() {
+        return master_repository_1.MasterRepository.listAdminUsers();
+    }
+    static async getAdminUserById(id) {
+        return master_repository_1.MasterRepository.getAdminUserById(id);
+    }
+    static async createAdminUser(input) {
+        const now = new Date().toISOString();
+        const user = {
+            id: `admin_${Date.now()}`,
+            username: input.username,
+            passwordHash: bcryptjs_1.default.hashSync(input.password, 10),
+            displayName: input.displayName,
+            role: input.role,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+        };
+        await master_repository_1.MasterRepository.createAdminUser(user);
+        return user;
+    }
+    static async setAdminUserActive(id, isActive) {
+        return master_repository_1.MasterRepository.updateAdminUser(id, { isActive });
+    }
     // ---- Legacy JSON import ----
     static assertUnique(values, label) {
         const seen = new Set();

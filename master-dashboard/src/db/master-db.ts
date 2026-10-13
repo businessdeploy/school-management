@@ -199,6 +199,39 @@ export class MasterDb {
     console.log(`[MasterDb] Seeded initial admin user "${config.masterAdminUsername}".`);
   }
 
+  public static async listAdminUsers(): Promise<AdminUserRecord[]> {
+    return MasterRepository.listAdminUsers();
+  }
+
+  public static async getAdminUserById(id: string): Promise<AdminUserRecord | undefined> {
+    return MasterRepository.getAdminUserById(id);
+  }
+
+  public static async createAdminUser(input: {
+    username: string;
+    password: string;
+    displayName?: string;
+    role: string;
+  }): Promise<AdminUserRecord> {
+    const now = new Date().toISOString();
+    const user: AdminUserRecord = {
+      id: `admin_${Date.now()}`,
+      username: input.username,
+      passwordHash: bcrypt.hashSync(input.password, 10),
+      displayName: input.displayName,
+      role: input.role,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await MasterRepository.createAdminUser(user);
+    return user;
+  }
+
+  public static async setAdminUserActive(id: string, isActive: boolean): Promise<boolean> {
+    return MasterRepository.updateAdminUser(id, { isActive });
+  }
+
   // ---- Legacy JSON import ----
 
   private static assertUnique(values: any[], label: string): void {

@@ -299,6 +299,32 @@ export class MasterRepository {
     return rows[0] ? mapAdminUserRow(rows[0]) : undefined;
   }
 
+  static async getAdminUserById(id: string): Promise<AdminUserRecord | undefined> {
+    const rows: any[] = await masterQuery('SELECT * FROM admin_users WHERE id = ? LIMIT 1', [id]);
+    return rows[0] ? mapAdminUserRow(rows[0]) : undefined;
+  }
+
+  static async updateAdminUser(id: string, updates: Partial<AdminUserRecord>): Promise<boolean> {
+    const fields: Record<string, any> = {
+      username: updates.username,
+      password_hash: updates.passwordHash,
+      display_name: updates.displayName || null,
+      role: updates.role,
+      is_active: updates.isActive === undefined ? undefined : updates.isActive ? 1 : 0,
+    };
+
+    const columns = Object.entries(fields).filter(([, v]) => v !== undefined);
+    if (columns.length === 0) return true;
+
+    const setClause = columns.map(([col]) => `\`${col}\` = ?`).join(', ');
+    const params: any[] = columns.map(([, v]) => v);
+    params.push(new Date().toISOString());
+    params.push(id);
+
+    const result: any = await masterQuery(`UPDATE admin_users SET ${setClause}, updated_at = ? WHERE id = ?`, params);
+    return result?.affectedRows === 1;
+  }
+
   static async createAdminUser(user: AdminUserRecord): Promise<void> {
     await masterQuery(
       `INSERT INTO admin_users (id, username, password_hash, display_name, role, is_active, created_at, updated_at)

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PERMISSIONS = void 0;
+exports.ROLES = exports.PERMISSIONS = void 0;
 exports.roleHasPermission = roleHasPermission;
 exports.listPermissionsForRole = listPermissionsForRole;
 exports.PERMISSIONS = {
@@ -11,7 +11,16 @@ exports.PERMISSIONS = {
     TENANT_ACCESS_ISSUE: 'tenant_access.issue',
     BACKUPS_DOWNLOAD: 'backups.download',
     NETWORKS_MANAGE: 'networks.manage',
+    USERS_MANAGE: 'users.manage',
 };
+exports.ROLES = [
+    'superadmin',
+    'operations_admin',
+    'network_admin',
+    'support_agent',
+    'finance_manager',
+    'auditor',
+];
 const ALL_PERMISSIONS = Object.values(exports.PERMISSIONS);
 const ROLE_PERMISSIONS = {
     operations_admin: [

@@ -1,0 +1,106 @@
+<%- include('partials/header') %>
+
+<div class="mb-8">
+  <h1 class="text-2xl font-extrabold text-white tracking-tight">Users &amp; Access</h1>
+  <p class="text-slate-400 text-sm mt-1">Manage named operators, roles, and account state for the master control plane.</p>
+</div>
+
+<% if (error) { %>
+  <div class="p-4 mb-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium">
+    <span>⚠️</span> <%= error %>
+  </div>
+<% } %>
+
+<% if (success) { %>
+  <div class="p-4 mb-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+    <span>✅</span> <%= success %>
+  </div>
+<% } %>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <!-- Existing users -->
+  <div class="lg:col-span-2 glass-card rounded-2xl p-6 border border-slate-800 shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-white">Operators</h3>
+      <span class="text-xs text-indigo-400 font-semibold"><%= users.length %> total</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="text-left text-slate-400 border-b border-slate-800">
+            <th class="py-2 pr-3 font-semibold">Username</th>
+            <th class="py-2 pr-3 font-semibold">Display Name</th>
+            <th class="py-2 pr-3 font-semibold">Role</th>
+            <th class="py-2 pr-3 font-semibold">Status</th>
+            <th class="py-2 font-semibold text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% users.forEach(function(u) { %>
+            <tr class="border-b border-slate-800/60">
+              <td class="py-3 pr-3 font-mono text-white"><%= u.username %></td>
+              <td class="py-3 pr-3 text-slate-300"><%= u.displayName || '—' %></td>
+              <td class="py-3 pr-3">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/10 text-brand-400 border border-brand-500/20"><%= u.role %></span>
+              </td>
+              <td class="py-3 pr-3">
+                <% if (u.isActive) { %>
+                  <span class="text-emerald-400">● Active</span>
+                <% } else { %>
+                  <span class="text-slate-500">● Inactive</span>
+                <% } %>
+              </td>
+              <td class="py-3 text-right">
+                <form action="/users/<%= u.id %>/toggle-active" method="POST" class="inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition <%= u.isActive ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20' %>">
+                    <%= u.isActive ? 'Deactivate' : 'Activate' %>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Create user -->
+  <div class="glass-card rounded-2xl p-6 border border-slate-800 shadow-xl self-start">
+    <h3 class="text-xs font-bold uppercase tracking-wider text-white mb-4">Invite Operator</h3>
+    <form action="/users/create" method="POST" class="space-y-3">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <div>
+        <label class="block text-[11px] font-medium text-slate-300 mb-1">Username</label>
+        <input type="text" name="username" required class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-medium text-slate-300 mb-1">Display Name</label>
+        <input type="text" name="displayName" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-medium text-slate-300 mb-1">Password</label>
+        <input type="password" name="password" required minlength="6" autocomplete="new-password" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-medium text-slate-300 mb-1">Role</label>
+        <select name="role" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition">
+          <% roles.forEach(function(r) { %>
+            <option value="<%= r %>"><%= r %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition">
+        Create User
+      </button>
+    </form>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

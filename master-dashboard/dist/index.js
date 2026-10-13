@@ -48,9 +48,12 @@ const gateway_proxy_1 = require("./services/gateway-proxy");
 const data_aggregator_1 = require("./services/data-aggregator");
 const auth_routes_1 = __importStar(require("./routes/auth-routes"));
 const csrf_1 = require("./middleware/csrf");
+const permissions_1 = require("./middleware/permissions");
+const permissions_2 = require("./permissions");
 const school_routes_1 = __importDefault(require("./routes/school-routes"));
 const analytics_routes_1 = __importDefault(require("./routes/analytics-routes"));
 const network_routes_1 = __importDefault(require("./routes/network-routes"));
+const user_routes_1 = __importDefault(require("./routes/user-routes"));
 const caddy_routes_1 = __importDefault(require("./routes/caddy-routes"));
 const fs_1 = __importDefault(require("fs"));
 (0, config_1.validateConfig)();
@@ -111,6 +114,7 @@ app.get('/', auth_routes_1.requireAuth, async (req, res) => {
 app.use('/schools', auth_routes_1.requireAuth, csrf_1.csrfProtection, school_routes_1.default);
 app.use('/master-data', auth_routes_1.requireAuth, csrf_1.csrfProtection, analytics_routes_1.default);
 app.use('/networks', auth_routes_1.requireAuth, csrf_1.csrfProtection, network_routes_1.default);
+app.use('/users', auth_routes_1.requireAuth, csrf_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_2.PERMISSIONS.USERS_MANAGE), user_routes_1.default);
 // 404 Fallback
 app.use((req, res) => {
     res.status(404).send(`
