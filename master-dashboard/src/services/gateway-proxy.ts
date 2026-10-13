@@ -50,9 +50,9 @@ export class GatewayProxy {
   /**
    * Express middleware that detects if the incoming request is destined for a school tenant.
    */
-  public static handleTenantRouting(req: Request, res: Response, next: NextFunction) {
-    this.routeTenant(req, res, next).catch(next);
-  }
+  public static handleTenantRouting = (req: Request, res: Response, next: NextFunction) => {
+    GatewayProxy.routeTenant(req, res, next).catch(next);
+  };
 
   private static async routeTenant(req: Request, res: Response, next: NextFunction) {
     const hostHeader = (req.headers.host || '').split(':')[0].toLowerCase();
