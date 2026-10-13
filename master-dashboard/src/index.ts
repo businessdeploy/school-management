@@ -4,6 +4,8 @@ import path from 'path';
 import crypto from 'crypto';
 import { config, validateConfig } from './config';
 import { MasterDb } from './db/master-db';
+import { FleetDb } from './db/fleet-db';
+import { ensureMasterSchema } from './db/master-repository';
 import { DockerService } from './services/docker-service';
 import { GatewayProxy } from './services/gateway-proxy';
 import { DataAggregator } from './services/data-aggregator';
@@ -25,6 +27,19 @@ const app = express();
 MasterDb.init();
 DockerService.init();
 GatewayProxy.init();
+
+// Ensure the transactional master schema exists (idempotent migration).
+(async () => {
+  try {
+    const isDbUp = await FleetDb.testConnection();
+    if (isDbUp) {
+      await ensureMasterSchema();
+      console.log('[MasterDb] Transactional master schema ready.');
+    }
+  } catch (err: any) {
+    console.warn('[MasterDb] Master schema migration skipped:', err.message);
+  }
+})();
 
 // 2. View Engine (EJS)
 const viewsPath = fs.existsSync(path.join(__dirname, 'views'))

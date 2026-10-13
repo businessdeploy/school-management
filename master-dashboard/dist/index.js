@@ -42,6 +42,8 @@ const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
 const config_1 = require("./config");
 const master_db_1 = require("./db/master-db");
+const fleet_db_1 = require("./db/fleet-db");
+const master_repository_1 = require("./db/master-repository");
 const docker_service_1 = require("./services/docker-service");
 const gateway_proxy_1 = require("./services/gateway-proxy");
 const data_aggregator_1 = require("./services/data-aggregator");
@@ -58,6 +60,19 @@ const app = (0, express_1.default)();
 master_db_1.MasterDb.init();
 docker_service_1.DockerService.init();
 gateway_proxy_1.GatewayProxy.init();
+// Ensure the transactional master schema exists (idempotent migration).
+(async () => {
+    try {
+        const isDbUp = await fleet_db_1.FleetDb.testConnection();
+        if (isDbUp) {
+            await (0, master_repository_1.ensureMasterSchema)();
+            console.log('[MasterDb] Transactional master schema ready.');
+        }
+    }
+    catch (err) {
+        console.warn('[MasterDb] Master schema migration skipped:', err.message);
+    }
+})();
 // 2. View Engine (EJS)
 const viewsPath = fs_1.default.existsSync(path_1.default.join(__dirname, 'views'))
     ? path_1.default.join(__dirname, 'views')
