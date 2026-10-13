@@ -17,7 +17,7 @@ exports.config = {
     // Master Dashboard Authentication
     masterAdminUsername: process.env.MASTER_ADMIN_USER || '',
     masterAdminPassword: process.env.MASTER_ADMIN_PASS || '',
-    sessionSecret: process.env.SESSION_SECRET || '',
+    sessionSecret: process.env.SESSION_SECRET || process.env.MASTER_SSO_SECRET || '',
     // SSO Impersonator Secret (Must match Smart School PHP MASTER_SSO_SECRET)
     masterSsoSecret: process.env.MASTER_SSO_SECRET || '',
     // Master Domain & Networks
