@@ -6,6 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GatewayProxy = void 0;
 const http_proxy_1 = __importDefault(require("http-proxy"));
 const master_db_1 = require("../db/master-db");
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 class GatewayProxy {
     static proxy = http_proxy_1.default.createProxyServer({
         changeOrigin: true,
@@ -52,12 +60,14 @@ class GatewayProxy {
         }
         // 1. Check Suspension Status
         if (school.status === 'suspended') {
+            const schoolName = escapeHtml(school.name);
+            const adminEmail = escapeHtml(school.adminEmail);
             return res.status(402).send(`
         <!DOCTYPE html>
         <html lang="en">
         <head>
           <meta charset="UTF-8">
-          <title>${school.name} - Portal Suspended</title>
+          <title>${schoolName} - Portal Suspended</title>
           <script src="https://cdn.tailwindcss.com"></script>
         </head>
         <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-6">
@@ -65,12 +75,12 @@ class GatewayProxy {
             <div class="w-16 h-16 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl font-bold">
               ⚠️
             </div>
-            <h1 class="text-2xl font-bold mb-2">${school.name}</h1>
+            <h1 class="text-2xl font-bold mb-2">${schoolName}</h1>
             <p class="text-slate-400 text-sm mb-6">This school portal has been temporarily suspended by network administration.</p>
             <div class="bg-slate-800/50 rounded-xl p-4 text-xs text-slate-400 mb-6">
               If you are an administrator, please contact your network service provider to reactivate this portal.
             </div>
-            <a href="mailto:${school.adminEmail}" class="inline-flex items-center justify-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition">
+            <a href="mailto:${adminEmail}" class="inline-flex items-center justify-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition">
               Contact School Administration
             </a>
           </div>
@@ -80,12 +90,13 @@ class GatewayProxy {
         }
         // 2. Check Stopped / Maintenance Status
         if (school.status === 'stopped') {
+            const schoolName = escapeHtml(school.name);
             return res.status(503).send(`
         <!DOCTYPE html>
         <html lang="en">
         <head>
           <meta charset="UTF-8">
-          <title>${school.name} - Maintenance</title>
+          <title>${schoolName} - Maintenance</title>
           <script src="https://cdn.tailwindcss.com"></script>
         </head>
         <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-6">
@@ -93,7 +104,7 @@ class GatewayProxy {
             <div class="w-16 h-16 bg-blue-500/10 text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl font-bold">
               🛠️
             </div>
-            <h1 class="text-2xl font-bold mb-2">${school.name}</h1>
+            <h1 class="text-2xl font-bold mb-2">${schoolName}</h1>
             <p class="text-slate-400 text-sm mb-6">This school portal is currently undergoing scheduled maintenance.</p>
             <div class="bg-slate-800/50 rounded-xl p-4 text-xs text-slate-400">
               Please check back shortly. All data is securely preserved.

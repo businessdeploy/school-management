@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import session from 'express-session';
 import path from 'path';
+import crypto from 'crypto';
 import { config, validateConfig } from './config';
 import { MasterDb } from './db/master-db';
 import { FleetDb } from './db/fleet-db';
@@ -140,7 +141,8 @@ app.use((req: Request, res: Response) => {
 
 // Global Error Handler Middleware
 app.use((err: any, req: Request, res: Response, next: any) => {
-  console.error('[MASTER CONTROL PLANE ERROR]:', err);
+  const referenceId = crypto.randomUUID();
+  console.error(`[MASTER CONTROL PLANE ERROR] ref=${referenceId}:`, err);
   if (res.headersSent) {
     return next(err);
   }
@@ -157,8 +159,8 @@ app.use((err: any, req: Request, res: Response, next: any) => {
             <span class="text-2xl">⚠️</span>
             <h2 class="text-lg font-bold text-rose-400">Master Orchestrator Error</h2>
           </div>
-          <p class="text-sm text-slate-300 mb-3 font-mono bg-slate-950 p-3 rounded-lg border border-slate-800">${err.message || err}</p>
-          <pre class="bg-slate-950 p-4 rounded-xl text-xs font-mono text-slate-400 overflow-x-auto border border-slate-800 max-h-64">${err.stack || 'No stack trace available'}</pre>
+          <p class="text-sm text-slate-300 mb-3">Something went wrong while handling this request.</p>
+          <p class="text-xs text-slate-500 mb-6">Reference ID: <code class="font-mono">${referenceId}</code></p>
           <div class="mt-6">
             <a href="/schools" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-semibold text-white transition">← Return to Schools</a>
           </div>
