@@ -53,7 +53,7 @@ export class DataAggregator {
     totalCollected: number;
     totalOutstanding: number;
   }> {
-    const schools = MasterDb.getSchools();
+    const schools = await MasterDb.getSchools();
     const isDbOnline = await FleetDb.testConnection();
 
     const telemetryList: SchoolTelemetry[] = [];
@@ -143,7 +143,7 @@ export class DataAggregator {
   public static async searchStudentsAcrossSchools(query: string): Promise<CrossSchoolStudentResult[]> {
     if (!query || query.trim().length === 0) return [];
     const searchTerm = `%${query.trim()}%`;
-    const schools = MasterDb.getSchools();
+    const schools = await MasterDb.getSchools();
     const isDbOnline = await FleetDb.testConnection();
     const results: CrossSchoolStudentResult[] = [];
 
@@ -230,7 +230,7 @@ export class DataAggregator {
    * Cross-School Payment Ledger: Collect recent fee transactions across all schools.
    */
   public static async getRecentCrossSchoolPayments(): Promise<CrossSchoolPaymentRecord[]> {
-    const schools = MasterDb.getSchools();
+    const schools = await MasterDb.getSchools();
     const isDbOnline = await FleetDb.testConnection();
     const records: CrossSchoolPaymentRecord[] = [];
 

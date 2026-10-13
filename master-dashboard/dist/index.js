@@ -42,8 +42,6 @@ const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
 const config_1 = require("./config");
 const master_db_1 = require("./db/master-db");
-const fleet_db_1 = require("./db/fleet-db");
-const master_repository_1 = require("./db/master-repository");
 const docker_service_1 = require("./services/docker-service");
 const gateway_proxy_1 = require("./services/gateway-proxy");
 const data_aggregator_1 = require("./services/data-aggregator");
@@ -57,22 +55,8 @@ const fs_1 = __importDefault(require("fs"));
 (0, config_1.validateConfig)();
 const app = (0, express_1.default)();
 // 1. Initialize Subsystems
-master_db_1.MasterDb.init();
 docker_service_1.DockerService.init();
 gateway_proxy_1.GatewayProxy.init();
-// Ensure the transactional master schema exists (idempotent migration).
-(async () => {
-    try {
-        const isDbUp = await fleet_db_1.FleetDb.testConnection();
-        if (isDbUp) {
-            await (0, master_repository_1.ensureMasterSchema)();
-            console.log('[MasterDb] Transactional master schema ready.');
-        }
-    }
-    catch (err) {
-        console.warn('[MasterDb] Master schema migration skipped:', err.message);
-    }
-})();
 // 2. View Engine (EJS)
 const viewsPath = fs_1.default.existsSync(path_1.default.join(__dirname, 'views'))
     ? path_1.default.join(__dirname, 'views')
@@ -111,9 +95,9 @@ app.use((req, res, next) => {
 // Overview Dashboard
 app.get('/', auth_routes_1.requireAuth, async (req, res) => {
     const telemetry = await data_aggregator_1.DataAggregator.getFleetTelemetry();
-    const schools = master_db_1.MasterDb.getSchools();
-    const networks = master_db_1.MasterDb.getNetworks();
-    const clients = master_db_1.MasterDb.getClients();
+    const schools = await master_db_1.MasterDb.getSchools();
+    const networks = await master_db_1.MasterDb.getNetworks();
+    const clients = await master_db_1.MasterDb.getClients();
     res.render('dashboard', {
         pageTitle: 'Master Fleet Control Plane',
         telemetry,
@@ -170,9 +154,18 @@ app.use((err, req, res, next) => {
   `);
 });
 // Start Server
-app.listen(config_1.config.port, config_1.config.host, () => {
-    console.log(`=======================================================`);
-    console.log(`🚀 Smart School Master Control Plane is Online!`);
-    console.log(`🌐 Dashboard URL: http://${config_1.config.host}:${config_1.config.port}`);
-    console.log(`=======================================================`);
-});
+(async () => {
+    try {
+        await master_db_1.MasterDb.init();
+        app.listen(config_1.config.port, config_1.config.host, () => {
+            console.log(`=======================================================`);
+            console.log(`🚀 Smart School Master Control Plane is Online!`);
+            console.log(`🌐 Dashboard URL: http://${config_1.config.host}:${config_1.config.port}`);
+            console.log(`=======================================================`);
+        });
+    }
+    catch (err) {
+        console.error('[MasterDb] Failed to initialize master store:', err);
+        process.exit(1);
+    }
+})();

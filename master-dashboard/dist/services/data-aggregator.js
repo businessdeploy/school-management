@@ -8,7 +8,7 @@ class DataAggregator {
      * Fetches live telemetry for all schools in the fleet.
      */
     static async getFleetTelemetry() {
-        const schools = master_db_1.MasterDb.getSchools();
+        const schools = await master_db_1.MasterDb.getSchools();
         const isDbOnline = await fleet_db_1.FleetDb.testConnection();
         const telemetryList = [];
         let totalStudents = 0;
@@ -84,7 +84,7 @@ class DataAggregator {
         if (!query || query.trim().length === 0)
             return [];
         const searchTerm = `%${query.trim()}%`;
-        const schools = master_db_1.MasterDb.getSchools();
+        const schools = await master_db_1.MasterDb.getSchools();
         const isDbOnline = await fleet_db_1.FleetDb.testConnection();
         const results = [];
         if (!isDbOnline) {
@@ -163,7 +163,7 @@ class DataAggregator {
      * Cross-School Payment Ledger: Collect recent fee transactions across all schools.
      */
     static async getRecentCrossSchoolPayments() {
-        const schools = master_db_1.MasterDb.getSchools();
+        const schools = await master_db_1.MasterDb.getSchools();
         const isDbOnline = await fleet_db_1.FleetDb.testConnection();
         const records = [];
         if (!isDbOnline) {

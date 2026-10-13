@@ -6,9 +6,9 @@ import { validateDomain } from '../validation';
 
 const router = Router();
 
-router.get('/', (req: Request, res: Response) => {
-  const networks = MasterDb.getNetworks();
-  const schools = MasterDb.getSchools();
+router.get('/', async (req: Request, res: Response) => {
+  const networks = await MasterDb.getNetworks();
+  const schools = await MasterDb.getSchools();
   res.render('networks', {
     pageTitle: 'Multi-Network & Custom Domain Routing',
     networks,
@@ -19,7 +19,7 @@ router.get('/', (req: Request, res: Response) => {
   });
 });
 
-router.post('/create', (req: Request, res: Response) => {
+router.post('/create', async (req: Request, res: Response) => {
   const { name, rootDomain, description } = req.body;
   if (!name) {
     return res.redirect('/networks?error=' + encodeURIComponent('Network name is required.'));
@@ -31,12 +31,13 @@ router.post('/create', (req: Request, res: Response) => {
   }
   const cleanRootDomain = domainValidation.value as string;
 
-  const existing = MasterDb.getNetworks().find((n) => n.rootDomain.toLowerCase() === cleanRootDomain);
+  const networks = await MasterDb.getNetworks();
+  const existing = networks.find((n) => n.rootDomain.toLowerCase() === cleanRootDomain);
   if (existing) {
     return res.redirect('/networks?error=' + encodeURIComponent(`Root domain "${cleanRootDomain}" is already registered.`));
   }
 
-  MasterDb.addNetwork({
+  await MasterDb.addNetwork({
     name: name.trim(),
     rootDomain: cleanRootDomain,
     isDefault: false,
@@ -47,8 +48,8 @@ router.post('/create', (req: Request, res: Response) => {
 
 router.post('/verify-domain', async (req: Request, res: Response) => {
   const { domain, expectedTarget } = req.body;
-  const networks = MasterDb.getNetworks();
-  const schools = MasterDb.getSchools();
+  const networks = await MasterDb.getNetworks();
+  const schools = await MasterDb.getSchools();
 
   const target = expectedTarget || 'ingress.yournetwork.com';
   const dnsResult = await DnsService.verifyDomain(domain, target);
@@ -64,7 +65,7 @@ router.post('/verify-domain', async (req: Request, res: Response) => {
 router.post('/bind-domain', async (req: Request, res: Response) => {
   const { schoolId, customDomain } = req.body;
 
-  const school = MasterDb.getSchoolById(schoolId);
+  const school = await MasterDb.getSchoolById(schoolId);
   if (!school) {
     return res.redirect('/networks?error=' + encodeURIComponent('Selected school is invalid.'));
   }
@@ -75,14 +76,15 @@ router.post('/bind-domain', async (req: Request, res: Response) => {
   }
   const cleanDomain = domainValidation.value as string;
 
-  const existing = MasterDb.getSchools().find(
+  const schools = await MasterDb.getSchools();
+  const existing = schools.find(
     (s) => s.id !== school.id && s.customDomain && s.customDomain.toLowerCase() === cleanDomain
   );
   if (existing) {
     return res.redirect('/networks?error=' + encodeURIComponent(`Domain "${cleanDomain}" is already bound to another school.`));
   }
 
-  MasterDb.updateSchool(school.id, {
+  await MasterDb.updateSchool(school.id, {
     customDomain: cleanDomain,
     sslStatus: 'active',
   });

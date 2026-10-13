@@ -133,7 +133,7 @@ export class MasterRepository {
     return rows[0] ? mapNetworkRow(rows[0]) : undefined;
   }
 
-  static async createNetwork(network: Omit<NetworkRecord, 'id' | 'createdAt'> & { id: string }): Promise<void> {
+  static async createNetwork(network: NetworkRecord): Promise<void> {
     await masterQuery(
       `INSERT INTO networks (id, name, root_domain, is_default, description, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
       [
@@ -142,7 +142,7 @@ export class MasterRepository {
         network.rootDomain,
         network.isDefault ? 1 : 0,
         network.description || null,
-        new Date().toISOString(),
+        network.createdAt,
       ]
     );
   }
@@ -158,7 +158,7 @@ export class MasterRepository {
     return rows[0] ? mapClientRow(rows[0]) : undefined;
   }
 
-  static async createClient(client: Omit<ClientRecord, 'createdAt'>): Promise<void> {
+  static async createClient(client: ClientRecord): Promise<void> {
     await masterQuery(
       `INSERT INTO clients (id, name, organization, email, phone, plan, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -169,7 +169,7 @@ export class MasterRepository {
         client.phone || null,
         client.plan,
         client.status,
-        new Date().toISOString(),
+        client.createdAt,
       ]
     );
   }
@@ -257,5 +257,69 @@ export class MasterRepository {
   static async deleteSchool(id: string): Promise<boolean> {
     const result: any = await masterQuery('DELETE FROM schools WHERE id = ?', [id]);
     return result?.affectedRows === 1;
+  }
+
+  /**
+   * Imports a full master store (networks, clients, schools) in a single
+   * transaction so a partial failure rolls back cleanly.
+   */
+  static async importAll(
+    networks: NetworkRecord[],
+    clients: ClientRecord[],
+    schools: SchoolRecord[]
+  ): Promise<{ networks: number; clients: number; schools: number }> {
+    const pool = FleetDb.getPool();
+    const conn = await pool.getConnection();
+    try {
+      await conn.query(`USE \`${config.fleetDb.masterDatabase}\``);
+      await conn.beginTransaction();
+      try {
+        for (const n of networks) {
+          await conn.query(
+            `INSERT INTO networks (id, name, root_domain, is_default, description, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+            [n.id, n.name, n.rootDomain, n.isDefault ? 1 : 0, n.description || null, n.createdAt]
+          );
+        }
+        for (const c of clients) {
+          await conn.query(
+            `INSERT INTO clients (id, name, organization, email, phone, plan, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [c.id, c.name, c.organization || null, c.email || null, c.phone || null, c.plan, c.status, c.createdAt]
+          );
+        }
+        for (const s of schools) {
+          await conn.query(
+            `INSERT INTO schools
+              (id, slug, name, client_id, network_id, subdomain, custom_domain, db_name, container_name,
+               admin_email, status, storage_quota_gb, max_students, ssl_status, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              s.id,
+              s.slug,
+              s.name,
+              s.clientId || null,
+              s.networkId || null,
+              s.subdomain,
+              s.customDomain || null,
+              s.dbName,
+              s.containerName,
+              s.adminEmail || null,
+              s.status,
+              s.storageQuotaGb,
+              s.maxStudents,
+              s.sslStatus,
+              s.createdAt,
+              s.updatedAt,
+            ]
+          );
+        }
+        await conn.commit();
+      } catch (err) {
+        await conn.rollback();
+        throw err;
+      }
+      return { networks: networks.length, clients: clients.length, schools: schools.length };
+    } finally {
+      conn.release();
+    }
   }
 }

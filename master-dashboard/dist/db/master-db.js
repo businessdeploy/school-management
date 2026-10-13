@@ -7,14 +7,9 @@ exports.MasterDb = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const config_1 = require("../config");
+const master_repository_1 = require("./master-repository");
 class MasterDb {
-    static dataFilePath = path_1.default.resolve(__dirname, '../../data/master-store.json');
-    static data = {
-        networks: [],
-        clients: [],
-        schools: [],
-    };
-    static resolveDataFilePath() {
+    static resolveJsonPath() {
         if (process.env.MASTER_STORE_PATH) {
             return process.env.MASTER_STORE_PATH;
         }
@@ -26,52 +21,17 @@ class MasterDb {
         }
         return path_1.default.resolve(__dirname, '../../data/master-store.json');
     }
-    static init() {
-        this.dataFilePath = this.resolveDataFilePath();
-        console.log('[MasterDb] Initialized store at:', this.dataFilePath);
-        const dataDir = path_1.default.dirname(this.dataFilePath);
-        if (!fs_1.default.existsSync(dataDir)) {
-            fs_1.default.mkdirSync(dataDir, { recursive: true });
-        }
-        if (fs_1.default.existsSync(this.dataFilePath)) {
-            try {
-                const raw = fs_1.default.readFileSync(this.dataFilePath, 'utf-8');
-                this.data = JSON.parse(raw);
-            }
-            catch (err) {
-                console.error('Error reading master-store.json, creating initial store:', err);
-                this.seedDefaults();
-            }
-        }
-        else {
-            this.seedDefaults();
-        }
-        // Auto-migrate domain if rootDomain or school subdomains still point to localhost
-        try {
-            let modified = false;
-            const targetRoot = config_1.config.defaultNetworkDomain;
-            const defaultNet = this.data.networks.find((n) => n.id === 'net_default');
-            if (defaultNet && (defaultNet.rootDomain === 'localhost' || defaultNet.rootDomain.includes('localhost'))) {
-                defaultNet.rootDomain = targetRoot;
-                modified = true;
-            }
-            for (const school of this.data.schools) {
-                if (school.subdomain && (school.subdomain.includes('localhost') || !school.subdomain.includes('.'))) {
-                    school.subdomain = `${school.slug}.${targetRoot}`;
-                    modified = true;
-                }
-            }
-            if (modified) {
-                this.save();
-                console.log(`[MasterDb] Auto-migrated school and network domains to live host: ${targetRoot}`);
-            }
-        }
-        catch (migErr) {
-            console.warn('[MasterDb] Domain auto-migration notice:', migErr);
-        }
+    /**
+     * Ensures the master schema exists and, on first run, imports the legacy
+     * JSON store. Fails loudly on error so the control plane never starts with
+     * missing or silently reseeded data.
+     */
+    static async init() {
+        await (0, master_repository_1.ensureMasterSchema)();
+        await this.importFromJsonIfNeeded();
     }
     /**
-     * Synchronize the currently active live domain with the fleet network and school subdomains.
+     * Returns the normalized live host without mutating stored routing.
      */
     static syncLiveDomain(hostHeader) {
         const raw = hostHeader || config_1.config.defaultNetworkDomain;
@@ -79,184 +39,114 @@ class MasterDb {
         if (!liveHost || liveHost === 'localhost' || liveHost === '127.0.0.1') {
             return liveHost || 'localhost';
         }
-        let modified = false;
-        const defaultNet = this.data.networks.find((n) => n.id === 'net_default');
-        if (defaultNet && defaultNet.rootDomain !== liveHost) {
-            console.log(`[MasterDb] Syncing default network domain to live host: ${defaultNet.rootDomain} -> ${liveHost}`);
-            defaultNet.rootDomain = liveHost;
-            modified = true;
-        }
-        for (const school of this.data.schools) {
-            if (school.subdomain && (school.subdomain.includes('localhost') || !school.subdomain.endsWith(`.${liveHost}`))) {
-                school.subdomain = `${school.slug}.${liveHost}`;
-                modified = true;
-            }
-        }
-        if (modified) {
-            this.save();
-            console.log(`[MasterDb] Synchronized ${this.data.schools.length} schools to live domain: *.${liveHost}`);
-        }
         return liveHost;
     }
-    static seedDefaults() {
-        this.data = {
-            networks: [
-                {
-                    id: 'net_default',
-                    name: 'Primary Network',
-                    rootDomain: 'localhost',
-                    isDefault: true,
-                    description: 'Default master network for local & standard school portals',
-                    createdAt: new Date().toISOString(),
-                },
-                {
-                    id: 'net_apex_group',
-                    name: 'Apex Educational Group',
-                    rootDomain: 'apexschools.net',
-                    isDefault: false,
-                    description: 'Dedicated white-label network for Apex partner institutions',
-                    createdAt: new Date().toISOString(),
-                },
-            ],
-            clients: [
-                {
-                    id: 'client_demo',
-                    name: 'Dr. Arthur Pendelton',
-                    organization: 'Apex Educational Foundation',
-                    email: 'admin@apexschools.net',
-                    phone: '+1 555-0199',
-                    plan: 'Enterprise',
-                    status: 'active',
-                    createdAt: new Date().toISOString(),
-                },
-            ],
-            schools: [
-                {
-                    id: 'school_sample_1',
-                    slug: 'greenwood',
-                    name: 'Greenwood International High',
-                    clientId: 'client_demo',
-                    networkId: 'net_default',
-                    subdomain: 'greenwood.localhost',
-                    customDomain: 'portal.greenwoodhigh.edu',
-                    dbName: 'ss_tenant_greenwood',
-                    containerName: 'ss_tenant_greenwood',
-                    adminEmail: 'principal@greenwoodhigh.edu',
-                    status: 'active',
-                    storageQuotaGb: 20,
-                    maxStudents: 2500,
-                    sslStatus: 'active',
-                    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-                    updatedAt: new Date().toISOString(),
-                },
-                {
-                    id: 'school_sample_2',
-                    slug: 'dps',
-                    name: 'Delhi Public School Campus',
-                    clientId: 'client_demo',
-                    networkId: 'net_default',
-                    subdomain: 'dps.localhost',
-                    dbName: 'ss_tenant_dps',
-                    containerName: 'ss_tenant_dps',
-                    adminEmail: 'admin@dpscampus.org',
-                    status: 'active',
-                    storageQuotaGb: 10,
-                    maxStudents: 1200,
-                    sslStatus: 'active',
-                    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-                    updatedAt: new Date().toISOString(),
-                },
-            ],
-        };
-        this.save();
-    }
-    static save() {
-        try {
-            fs_1.default.writeFileSync(this.dataFilePath, JSON.stringify(this.data, null, 2), 'utf-8');
-        }
-        catch (err) {
-            console.error('Error saving master-store.json:', err);
-        }
-    }
     // Networks
-    static getNetworks() {
-        return this.data.networks;
+    static async getNetworks() {
+        return master_repository_1.MasterRepository.listNetworks();
     }
-    static getNetworkById(id) {
-        return this.data.networks.find((n) => n.id === id);
+    static async getNetworkById(id) {
+        return master_repository_1.MasterRepository.getNetworkById(id);
     }
-    static addNetwork(network) {
+    static async addNetwork(network) {
         const newNetwork = {
             ...network,
             id: `net_${Date.now()}`,
             createdAt: new Date().toISOString(),
         };
-        this.data.networks.push(newNetwork);
-        this.save();
+        await master_repository_1.MasterRepository.createNetwork(newNetwork);
         return newNetwork;
     }
     // Clients
-    static getClients() {
-        return this.data.clients;
+    static async getClients() {
+        return master_repository_1.MasterRepository.listClients();
     }
-    static addClient(client) {
+    static async addClient(client) {
         const newClient = {
             ...client,
             id: `client_${Date.now()}`,
             createdAt: new Date().toISOString(),
         };
-        this.data.clients.push(newClient);
-        this.save();
+        await master_repository_1.MasterRepository.createClient(newClient);
         return newClient;
     }
     // Schools
-    static getSchools() {
-        return this.data.schools;
+    static async getSchools() {
+        return master_repository_1.MasterRepository.listSchools();
     }
-    static getSchoolById(id) {
-        return this.data.schools.find((s) => s.id === id);
+    static async getSchoolById(id) {
+        return master_repository_1.MasterRepository.getSchoolById(id);
     }
-    static getSchoolBySlug(slug) {
-        return this.data.schools.find((s) => s.slug.toLowerCase() === slug.toLowerCase());
+    static async getSchoolBySlug(slug) {
+        return master_repository_1.MasterRepository.getSchoolBySlug(slug);
     }
-    static getSchoolByDomain(domain) {
-        const cleanDomain = domain.split(':')[0].toLowerCase();
-        return this.data.schools.find((s) => {
-            const sub = s.subdomain?.split(':')[0].toLowerCase();
-            const custom = s.customDomain?.split(':')[0].toLowerCase();
-            return sub === cleanDomain || custom === cleanDomain;
-        });
+    static async getSchoolByDomain(domain) {
+        return master_repository_1.MasterRepository.getSchoolByDomain(domain);
     }
-    static addSchool(school) {
+    static async addSchool(school) {
+        const now = new Date().toISOString();
         const newSchool = {
             ...school,
             id: `school_${Date.now()}`,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            createdAt: now,
+            updatedAt: now,
         };
-        this.data.schools.push(newSchool);
-        this.save();
+        await master_repository_1.MasterRepository.createSchool(newSchool);
         return newSchool;
     }
-    static updateSchool(id, updates) {
-        const idx = this.data.schools.findIndex((s) => s.id === id);
-        if (idx === -1)
+    static async updateSchool(id, updates) {
+        const updated = await master_repository_1.MasterRepository.updateSchool(id, updates);
+        if (!updated)
             return null;
-        this.data.schools[idx] = {
-            ...this.data.schools[idx],
-            ...updates,
-            updatedAt: new Date().toISOString(),
-        };
-        this.save();
-        return this.data.schools[idx];
+        return (await master_repository_1.MasterRepository.getSchoolById(id)) || null;
     }
-    static deleteSchool(id) {
-        const idx = this.data.schools.findIndex((s) => s.id === id);
-        if (idx === -1)
-            return false;
-        this.data.schools.splice(idx, 1);
-        this.save();
-        return true;
+    static async deleteSchool(id) {
+        return master_repository_1.MasterRepository.deleteSchool(id);
+    }
+    // ---- Legacy JSON import ----
+    static assertUnique(values, label) {
+        const seen = new Set();
+        for (const raw of values) {
+            if (raw === undefined || raw === null || raw === '')
+                continue;
+            const key = String(raw).toLowerCase();
+            if (seen.has(key)) {
+                throw new Error(`Duplicate ${label} "${raw}" in master store.`);
+            }
+            seen.add(key);
+        }
+    }
+    static quarantine(jsonPath, suffix) {
+        fs_1.default.renameSync(jsonPath, `${jsonPath}${suffix}`);
+    }
+    static async importFromJsonIfNeeded() {
+        const existing = await master_repository_1.MasterRepository.listSchools();
+        if (existing.length > 0) {
+            return;
+        }
+        const jsonPath = this.resolveJsonPath();
+        if (!fs_1.default.existsSync(jsonPath)) {
+            return;
+        }
+        let parsed;
+        try {
+            parsed = JSON.parse(fs_1.default.readFileSync(jsonPath, 'utf-8'));
+        }
+        catch (err) {
+            this.quarantine(jsonPath, '.corrupt');
+            throw new Error(`Master store JSON at ${jsonPath} is corrupt and was quarantined.`);
+        }
+        const networks = Array.isArray(parsed.networks) ? parsed.networks : [];
+        const clients = Array.isArray(parsed.clients) ? parsed.clients : [];
+        const schools = Array.isArray(parsed.schools) ? parsed.schools : [];
+        this.assertUnique(networks.map((n) => n.rootDomain), 'network root domain');
+        this.assertUnique(clients.map((c) => c.id), 'client id');
+        this.assertUnique(schools.map((s) => s.slug), 'school slug');
+        this.assertUnique(schools.map((s) => s.subdomain), 'school subdomain');
+        this.assertUnique(schools.map((s) => s.customDomain), 'custom domain');
+        const result = await master_repository_1.MasterRepository.importAll(networks, clients, schools);
+        this.quarantine(jsonPath, `.imported-${Date.now()}`);
+        console.log(`[MasterDb] Imported ${result.networks} networks, ${result.clients} clients, ${result.schools} schools from ${jsonPath}.`);
     }
 }
 exports.MasterDb = MasterDb;

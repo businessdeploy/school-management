@@ -51,9 +51,12 @@ class GatewayProxy {
      * Express middleware that detects if the incoming request is destined for a school tenant.
      */
     static handleTenantRouting(req, res, next) {
+        this.routeTenant(req, res, next).catch(next);
+    }
+    static async routeTenant(req, res, next) {
         const hostHeader = (req.headers.host || '').split(':')[0].toLowerCase();
         // Check if host matches a known school subdomain or custom domain
-        const school = master_db_1.MasterDb.getSchoolByDomain(hostHeader);
+        const school = await master_db_1.MasterDb.getSchoolByDomain(hostHeader);
         if (!school) {
             // Not a school tenant request, proceed to Master Dashboard UI
             return next();

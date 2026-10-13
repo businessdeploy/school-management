@@ -10,9 +10,9 @@ import { validateSlug, validateDomain, validateBoundedInt } from '../validation'
 
 const router = Router();
 
-function renderCreateForm(res: Response, error: string | null) {
-  const clients = MasterDb.getClients();
-  const networks = MasterDb.getNetworks();
+async function renderCreateForm(res: Response, error: string | null) {
+  const clients = await MasterDb.getClients();
+  const networks = await MasterDb.getNetworks();
   return res.render('school-create', {
     pageTitle: 'Instant School Onboarding Wizard',
     clients,
@@ -26,9 +26,9 @@ router.get('/', async (req: Request, res: Response) => {
   const hostHeader = (req.headers['x-forwarded-host'] || req.headers.host) as string;
   const currentHost = MasterDb.syncLiveDomain(hostHeader);
 
-  const schools = MasterDb.getSchools();
-  const clients = MasterDb.getClients();
-  const networks = MasterDb.getNetworks();
+  const schools = await MasterDb.getSchools();
+  const clients = await MasterDb.getClients();
+  const networks = await MasterDb.getNetworks();
 
   // Attach client and network details
   const enrichedSchools = schools.map((s) => ({
@@ -50,18 +50,11 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // 2. New School Form
-router.get('/new', (req: Request, res: Response) => {
+router.get('/new', async (req: Request, res: Response) => {
   const hostHeader = (req.headers['x-forwarded-host'] || req.headers.host) as string;
   MasterDb.syncLiveDomain(hostHeader);
 
-  const clients = MasterDb.getClients();
-  const networks = MasterDb.getNetworks();
-  res.render('school-create', {
-    pageTitle: 'Instant School Onboarding Wizard',
-    clients,
-    networks,
-    error: null,
-  });
+  return renderCreateForm(res, null);
 });
 
 // 3. Create School (End-to-End Onboarding)
@@ -91,11 +84,11 @@ router.post('/create', async (req: Request, res: Response) => {
   }
 
   // Check uniqueness
-  if (MasterDb.getSchoolBySlug(cleanSlug)) {
+  if (await MasterDb.getSchoolBySlug(cleanSlug)) {
     return renderCreateForm(res, `Slug "${cleanSlug}" is already taken. Please choose a different subdomain slug.`);
   }
 
-  const network = MasterDb.getNetworkById(networkId);
+  const network = await MasterDb.getNetworkById(networkId);
   if (!network) {
     return renderCreateForm(res, 'Selected network is invalid.');
   }
@@ -119,7 +112,8 @@ router.post('/create', async (req: Request, res: Response) => {
     cleanCustomDomain = domainValidation.value as string;
   }
 
-  const client = clientId ? MasterDb.getClients().find((c) => c.id === clientId) : MasterDb.getClients()[0];
+  const clients = await MasterDb.getClients();
+  const client = clientId ? clients.find((c) => c.id === clientId) : clients[0];
   if (!client) {
     return renderCreateForm(res, 'Selected client is invalid.');
   }
@@ -130,7 +124,7 @@ router.post('/create', async (req: Request, res: Response) => {
 
   try {
     // 1. Save record in master database with status 'provisioning'
-    const newSchool = MasterDb.addSchool({
+    const newSchool = await MasterDb.addSchool({
       slug: cleanSlug,
       name,
       clientId: client.id,
@@ -173,7 +167,7 @@ router.post('/create', async (req: Request, res: Response) => {
     }
 
     // 5. Update status to active
-    MasterDb.updateSchool(newSchool.id, { status: 'active' });
+    await MasterDb.updateSchool(newSchool.id, { status: 'active' });
 
     res.redirect(`/schools/${newSchool.id}`);
   } catch (err: any) {
@@ -188,10 +182,11 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
     const hostHeader = (req.headers['x-forwarded-host'] || req.headers.host) as string;
     const currentHost = MasterDb.syncLiveDomain(hostHeader);
 
-    const school = MasterDb.getSchoolById(req.params.id);
+    const school = await MasterDb.getSchoolById(req.params.id);
     if (!school) return res.redirect('/schools');
 
-    const client = MasterDb.getClients().find((c) => c.id === school.clientId) || {
+    const clients = await MasterDb.getClients();
+    const client = clients.find((c) => c.id === school.clientId) || {
       id: school.clientId || 'client_default',
       name: 'Direct Client',
       organization: school.name,
@@ -202,7 +197,8 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
       createdAt: school.createdAt,
     };
 
-    const network = MasterDb.getNetworks().find((n) => n.id === school.networkId) || {
+    const networks = await MasterDb.getNetworks();
+    const network = networks.find((n) => n.id === school.networkId) || {
       id: school.networkId || 'net_default',
       name: 'Primary Network Fleet',
       rootDomain: currentHost || config.defaultNetworkDomain,
@@ -250,8 +246,8 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
 });
 
 // 5. 1-Click Master Admin SSO Login (Direct Impersonation)
-router.get('/:id/sso-login', (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+router.get('/:id/sso-login', async (req: Request, res: Response) => {
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
   const operator = (req.session as any)?.user?.username || 'unknown-operator';
@@ -269,7 +265,7 @@ router.get('/:id/sso-login', (req: Request, res: Response) => {
 
 // 6. Direct Super Admin Password Reset
 router.post('/:id/reset-password', async (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
   const { newPassword } = req.body;
@@ -288,7 +284,7 @@ router.post('/:id/reset-password', async (req: Request, res: Response) => {
 
 // 7. 1-Click Database SQL Backup Download
 router.get('/:id/backup-db', async (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
   try {
@@ -306,7 +302,7 @@ router.get('/:id/backup-db', async (req: Request, res: Response) => {
 
 // 8. Update School Configuration & Quotas
 router.post('/:id/edit', async (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
   const { name, adminEmail, customDomain, storageQuotaGb, maxStudents, status } = req.body;
@@ -337,7 +333,7 @@ router.post('/:id/edit', async (req: Request, res: Response) => {
   }
 
   try {
-    MasterDb.updateSchool(school.id, {
+    await MasterDb.updateSchool(school.id, {
       name: name ? name.trim() : school.name,
       adminEmail: adminEmail ? adminEmail.trim() : school.adminEmail,
       customDomain: cleanDomain,
@@ -365,12 +361,12 @@ router.post('/:id/edit', async (req: Request, res: Response) => {
 
 // 9. Quick Status Toggle
 router.post('/:id/set-status', async (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (!school) return res.redirect('/schools');
 
   const { status } = req.body;
   if (['active', 'suspended', 'stopped'].includes(status)) {
-    MasterDb.updateSchool(school.id, { status });
+    await MasterDb.updateSchool(school.id, { status });
     if (status === 'active') {
       await DockerService.startContainer(school.containerName);
     } else if (status === 'stopped') {
@@ -384,52 +380,52 @@ router.post('/:id/set-status', async (req: Request, res: Response) => {
 
 // 10. Lifecycle Actions
 router.post('/:id/start', async (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
     await DockerService.startContainer(school.containerName);
-    MasterDb.updateSchool(school.id, { status: 'active' });
+    await MasterDb.updateSchool(school.id, { status: 'active' });
   }
   res.redirect(`/schools/${req.params.id}?success=Container started successfully.`);
 });
 
 router.post('/:id/stop', async (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
     await DockerService.stopContainer(school.containerName);
-    MasterDb.updateSchool(school.id, { status: 'stopped' });
+    await MasterDb.updateSchool(school.id, { status: 'stopped' });
   }
   res.redirect(`/schools/${req.params.id}?success=Container stopped.`);
 });
 
 router.post('/:id/restart', async (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
     await DockerService.restartContainer(school.containerName);
   }
   res.redirect(`/schools/${req.params.id}?success=Container restarted successfully.`);
 });
 
-router.post('/:id/suspend', (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+router.post('/:id/suspend', async (req: Request, res: Response) => {
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
-    MasterDb.updateSchool(school.id, { status: 'suspended' });
+    await MasterDb.updateSchool(school.id, { status: 'suspended' });
   }
   res.redirect(`/schools/${req.params.id}?success=School suspended. Public traffic blocked.`);
 });
 
-router.post('/:id/activate', (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+router.post('/:id/activate', async (req: Request, res: Response) => {
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
-    MasterDb.updateSchool(school.id, { status: 'active' });
+    await MasterDb.updateSchool(school.id, { status: 'active' });
   }
   res.redirect(`/schools/${req.params.id}?success=School reactivated.`);
 });
 
 router.post('/:id/delete', async (req: Request, res: Response) => {
-  const school = MasterDb.getSchoolById(req.params.id);
+  const school = await MasterDb.getSchoolById(req.params.id);
   if (school) {
     await DockerService.removeContainer(school.containerName);
-    MasterDb.deleteSchool(school.id);
+    await MasterDb.deleteSchool(school.id);
   }
   res.redirect('/schools?success=School permanently deleted.');
 });

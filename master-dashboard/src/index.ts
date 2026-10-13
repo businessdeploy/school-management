@@ -4,8 +4,6 @@ import path from 'path';
 import crypto from 'crypto';
 import { config, validateConfig } from './config';
 import { MasterDb } from './db/master-db';
-import { FleetDb } from './db/fleet-db';
-import { ensureMasterSchema } from './db/master-repository';
 import { DockerService } from './services/docker-service';
 import { GatewayProxy } from './services/gateway-proxy';
 import { DataAggregator } from './services/data-aggregator';
@@ -24,22 +22,8 @@ validateConfig();
 const app = express();
 
 // 1. Initialize Subsystems
-MasterDb.init();
 DockerService.init();
 GatewayProxy.init();
-
-// Ensure the transactional master schema exists (idempotent migration).
-(async () => {
-  try {
-    const isDbUp = await FleetDb.testConnection();
-    if (isDbUp) {
-      await ensureMasterSchema();
-      console.log('[MasterDb] Transactional master schema ready.');
-    }
-  } catch (err: any) {
-    console.warn('[MasterDb] Master schema migration skipped:', err.message);
-  }
-})();
 
 // 2. View Engine (EJS)
 const viewsPath = fs.existsSync(path.join(__dirname, 'views'))
@@ -88,9 +72,9 @@ app.use((req, res, next) => {
 // Overview Dashboard
 app.get('/', requireAuth, async (req: Request, res: Response) => {
   const telemetry = await DataAggregator.getFleetTelemetry();
-  const schools = MasterDb.getSchools();
-  const networks = MasterDb.getNetworks();
-  const clients = MasterDb.getClients();
+  const schools = await MasterDb.getSchools();
+  const networks = await MasterDb.getNetworks();
+  const clients = await MasterDb.getClients();
 
   res.render('dashboard', {
     pageTitle: 'Master Fleet Control Plane',
@@ -152,9 +136,17 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 });
 
 // Start Server
-app.listen(config.port, config.host, () => {
-  console.log(`=======================================================`);
-  console.log(`🚀 Smart School Master Control Plane is Online!`);
-  console.log(`🌐 Dashboard URL: http://${config.host}:${config.port}`);
-  console.log(`=======================================================`);
-});
+(async () => {
+  try {
+    await MasterDb.init();
+    app.listen(config.port, config.host, () => {
+      console.log(`=======================================================`);
+      console.log(`🚀 Smart School Master Control Plane is Online!`);
+      console.log(`🌐 Dashboard URL: http://${config.host}:${config.port}`);
+      console.log(`=======================================================`);
+    });
+  } catch (err: any) {
+    console.error('[MasterDb] Failed to initialize master store:', err);
+    process.exit(1);
+  }
+})();
