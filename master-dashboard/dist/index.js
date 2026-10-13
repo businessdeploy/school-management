@@ -108,10 +108,16 @@ app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 // 6. Session Middleware
 app.use((0, express_session_1.default)({
+    name: 'master.sid',
     secret: config_1.config.sessionSecret,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 86400000 }, // 24 hours
+    cookie: {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: config_1.config.env === 'production',
+        maxAge: 86400000, // 24 hours
+    },
 }));
 // 7. Master Auth Routes
 app.use('/auth', auth_routes_1.default);

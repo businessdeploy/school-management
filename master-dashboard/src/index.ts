@@ -87,10 +87,16 @@ app.use(express.urlencoded({ extended: true }));
 // 6. Session Middleware
 app.use(
   session({
+    name: 'master.sid',
     secret: config.sessionSecret,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 86400000 }, // 24 hours
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: config.env === 'production',
+      maxAge: 86400000, // 24 hours
+    },
   })
 );
 
