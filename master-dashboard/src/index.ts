@@ -148,13 +148,17 @@ app.use((req, res, next) => {
 // Overview Dashboard
 app.get('/', requireAuth, async (req: Request, res: Response) => {
   const telemetry = await DataAggregator.getFleetTelemetry();
+  const hostTelemetry = await DataAggregator.getHostTelemetry();
+  const monthlyTrends = await DataAggregator.getMonthlyTrends();
   const schools = await MasterDb.getSchools();
   const networks = await MasterDb.getNetworks();
   const clients = await MasterDb.getClients();
 
   res.render('dashboard', {
-    pageTitle: 'Master Fleet Control Plane',
+    pageTitle: 'Fleet Command & Observability',
     telemetry,
+    hostTelemetry,
+    monthlyTrends,
     schools,
     networks,
     clients,

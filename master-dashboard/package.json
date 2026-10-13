@@ -4,7 +4,7 @@
   "description": "Central Network Control Plane & Fleet Orchestrator for Prime School SaaS by Primeskill Solutions Private Limited",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/views dist/ && cp src/database.sql dist/",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts"
   },

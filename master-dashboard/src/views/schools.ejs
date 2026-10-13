@@ -1,131 +1,354 @@
 <%- include('partials/header') %>
 
-<!-- Flash Notifications -->
-<% if (typeof success !== 'undefined' && success) { %>
-  <div class="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center justify-between shadow-lg shadow-emerald-500/5">
-    <div class="flex items-center space-x-2">
-      <span class="text-base">✅</span>
-      <span class="font-medium"><%= success %></span>
+<div x-data="{
+  searchQuery: '',
+  statusFilter: 'all',
+  passwordModalOpen: false,
+  selectedSchool: { id: '', name: '', slug: '', adminEmail: '' },
+  newPassword: '',
+  copied: false,
+
+  openPasswordModal(school) {
+    this.selectedSchool = school;
+    this.generateStrongPassword();
+    this.passwordModalOpen = true;
+  },
+  generateStrongPassword() {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghjkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const symbols = '!@#$%^&*';
+    const all = upper + lower + digits + symbols;
+    let pwd = '';
+    pwd += upper.charAt(Math.floor(Math.random() * upper.length));
+    pwd += lower.charAt(Math.floor(Math.random() * lower.length));
+    pwd += digits.charAt(Math.floor(Math.random() * digits.length));
+    pwd += symbols.charAt(Math.floor(Math.random() * symbols.length));
+    for (let i = 0; i < 8; i++) {
+      pwd += all.charAt(Math.floor(Math.random() * all.length));
+    }
+    this.newPassword = pwd;
+  },
+  copyPassword() {
+    navigator.clipboard.writeText(this.newPassword);
+    this.copied = true;
+    setTimeout(() => { this.copied = false; }, 2000);
+  },
+  matchesFilter(name, slug, domain, db, status) {
+    const q = this.searchQuery.toLowerCase();
+    const matchesSearch = !q || name.toLowerCase().includes(q) || slug.toLowerCase().includes(q) || domain.toLowerCase().includes(q) || db.toLowerCase().includes(q);
+    const matchesStatus = this.statusFilter === 'all' || status === this.statusFilter;
+    return matchesSearch && matchesStatus;
+  }
+}">
+
+  <!-- Flash Notifications -->
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center justify-between shadow-lg shadow-emerald-500/5">
+      <div class="flex items-center space-x-2">
+        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+        <span class="font-medium"><%= success %></span>
+      </div>
+      <a href="/schools" class="text-slate-400 hover:text-white text-[11px]">Dismiss</a>
     </div>
-    <a href="/schools" class="text-slate-400 hover:text-white text-[11px]">Dismiss</a>
-  </div>
-<% } %>
+  <% } %>
 
-<% if (typeof error !== 'undefined' && error) { %>
-  <div class="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between shadow-lg shadow-rose-500/5">
-    <div class="flex items-center space-x-2">
-      <span class="text-base">⚠️</span>
-      <span class="font-medium"><%= error %></span>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between shadow-lg shadow-rose-500/5">
+      <div class="flex items-center space-x-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+        <span class="font-medium"><%= error %></span>
+      </div>
+      <a href="/schools" class="text-slate-400 hover:text-white text-[11px]">Dismiss</a>
     </div>
-    <a href="/schools" class="text-slate-400 hover:text-white text-[11px]">Dismiss</a>
+  <% } %>
+
+  <!-- Title & Primary Action Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">School Fleet Directory</h1>
+      <p class="text-slate-400 text-xs sm:text-sm mt-1">
+        Centralized multi-tenant management • Cluster host: 
+        <code class="text-indigo-400 font-mono text-xs bg-slate-900 px-2 py-0.5 rounded border border-slate-800"><%= typeof currentHost !== 'undefined' ? currentHost : 'Active' %></code>
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2.5">
+      <a href="/schools/export/csv" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center space-x-2 shadow-sm">
+        <i data-lucide="download" class="w-3.5 h-3.5 text-slate-400"></i>
+        <span>Export CSV</span>
+      </a>
+      <a href="/schools/new" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/25 transition flex items-center space-x-2">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        <span>Onboard New School</span>
+      </a>
+    </div>
   </div>
-<% } %>
 
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-  <div>
-    <h1 class="text-2xl font-extrabold text-white tracking-tight">School Fleet Directory</h1>
-    <p class="text-slate-400 text-sm mt-1">
-      Manage isolated school tenants, domains, and containers. Live cluster host: 
-      <code class="text-indigo-400 font-mono text-xs bg-slate-900 px-2 py-0.5 rounded border border-slate-800"><%= typeof currentHost !== 'undefined' ? currentHost : 'Active' %></code>
-    </p>
+  <!-- Search & Filter Bar -->
+  <div class="glass-card rounded-2xl p-4 border border-slate-800 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <!-- Live Search Input -->
+    <div class="relative flex-1">
+      <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+      <input 
+        type="text" 
+        x-model="searchQuery" 
+        placeholder="Filter by school name, slug, domain, or database..."
+        class="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+      >
+      <button 
+        x-show="searchQuery.length > 0" 
+        @click="searchQuery = ''" 
+        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+        style="display: none;"
+      >
+        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+
+    <!-- Status Filter Buttons -->
+    <div class="flex items-center space-x-1.5 overflow-x-auto text-xs font-semibold shrink-0">
+      <button 
+        @click="statusFilter = 'all'" 
+        :class="statusFilter === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'"
+        class="px-3 py-1.5 rounded-xl transition"
+      >
+        All (<%= schools.length %>)
+      </button>
+      <button 
+        @click="statusFilter = 'active'" 
+        :class="statusFilter === 'active' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'"
+        class="px-3 py-1.5 rounded-xl transition"
+      >
+        Active (<%= activeCount %>)
+      </button>
+      <button 
+        @click="statusFilter = 'suspended'" 
+        :class="statusFilter === 'suspended' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'"
+        class="px-3 py-1.5 rounded-xl transition"
+      >
+        Suspended (<%= suspendedCount %>)
+      </button>
+      <button 
+        @click="statusFilter = 'stopped'" 
+        :class="statusFilter === 'stopped' ? 'bg-slate-700 text-white shadow-sm' : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'"
+        class="px-3 py-1.5 rounded-xl transition"
+      >
+        Stopped (<%= schools.length - activeCount - suspendedCount %>)
+      </button>
+    </div>
   </div>
-  <a href="/schools/new" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/25 transition flex items-center space-x-2 self-start sm:self-auto">
-    <span>✨</span>
-    <span>Onboard New School</span>
-  </a>
-</div>
 
-<!-- Fleet Table -->
-<div class="glass-card rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
-  <div class="overflow-x-auto">
-    <table class="w-full text-left text-xs">
-      <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
-        <tr>
-          <th class="px-6 py-4">School & Slug</th>
-          <th class="px-6 py-4">Live Domain & URL</th>
-          <th class="px-6 py-4">Database</th>
-          <th class="px-6 py-4">Status</th>
-          <th class="px-6 py-4">Quota</th>
-          <th class="px-6 py-4 text-right">Actions</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-800/60">
-        <% schools.forEach(function(s) { %>
-          <tr class="hover:bg-slate-800/30 transition">
-            <td class="px-6 py-4">
-              <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-base">
-                  🏫
-                </div>
-                <div>
-                  <a href="/schools/<%= s.id %>" class="text-white font-bold hover:text-indigo-400 transition"><%= s.name %></a>
-                  <p class="text-slate-400 font-mono text-[11px]">slug: <span class="text-indigo-400"><%= s.slug %></span></p>
-                </div>
-              </div>
-            </td>
-
-            <td class="px-6 py-4 font-mono text-slate-300">
-              <a href="https://<%= s.customDomain || s.subdomain %>" target="_blank" class="hover:text-emerald-400 text-slate-200 flex items-center space-x-1 font-semibold" title="Open School Portal in New Tab">
-                <span><%= s.subdomain %></span>
-                <span class="text-[10px] text-slate-500">↗</span>
-              </a>
-              <% if (s.customDomain) { %>
-                <div class="text-emerald-400 text-[11px] flex items-center space-x-1 mt-0.5 font-sans">
-                  <span>🔗</span>
-                  <span class="font-mono"><%= s.customDomain %></span>
-                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">Custom</span>
-                </div>
-              <% } %>
-            </td>
-
-            <td class="px-6 py-4 font-mono text-slate-400">
-              <%= s.dbName %>
-            </td>
-
-            <td class="px-6 py-4">
-              <% if (s.status === 'active') { %>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  ● Active
-                </span>
-              <% } else if (s.status === 'suspended') { %>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  ● Suspended
-                </span>
-              <% } else { %>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">
-                  ● Stopped
-                </span>
-              <% } %>
-            </td>
-
-            <td class="px-6 py-4 text-slate-300">
-              <div><%= s.storageQuotaGb %> GB</div>
-              <div class="text-[11px] text-slate-500"><%= s.maxStudents %> students</div>
-            </td>
-
-            <td class="px-6 py-4 text-right">
-              <div class="flex items-center justify-end space-x-2">
-                <!-- 1-Click Master SSO -->
-                <a href="/schools/<%= s.id %>/sso-login" target="_blank" title="1-Click Super Admin Login" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center space-x-1">
-                  <span>⚡</span>
-                  <span>Login</span>
-                </a>
-                <!-- SQL Backup Download -->
-                <a href="/schools/<%= s.id %>/backup-db" title="Download SQL Backup" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition">
-                  💾
-                </a>
-                <!-- Manage -->
-                <a href="/schools/<%= s.id %>" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition">
-                  Manage
-                </a>
-              </div>
-            </td>
+  <!-- Responsive Fleet Table Wrapper -->
+  <div class="glass-card rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+          <tr>
+            <th class="px-5 py-4">School & Slug</th>
+            <th class="px-5 py-4">Live Domain & Routing</th>
+            <th class="px-5 py-4">Database</th>
+            <th class="px-5 py-4">Status</th>
+            <th class="px-5 py-4">Storage & Quota</th>
+            <th class="px-5 py-4 text-right">Quick Actions</th>
           </tr>
-        <% }); %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60">
+          <% schools.forEach(function(s) { %>
+            <tr 
+              x-show="matchesFilter('<%= (s.name || '').replace(/'/g, "\\'") %>', '<%= s.slug %>', '<%= (s.customDomain || s.subdomain) %>', '<%= s.dbName %>', '<%= s.status %>')"
+              class="hover:bg-slate-800/30 transition group"
+            >
+              <!-- School & Slug -->
+              <td class="px-5 py-4">
+                <div class="flex items-center space-x-3">
+                  <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold">
+                    <i data-lucide="school" class="w-4 h-4"></i>
+                  </div>
+                  <div>
+                    <a href="/schools/<%= s.id %>" class="text-white font-bold hover:text-indigo-400 transition flex items-center space-x-1">
+                      <span><%= s.name %></span>
+                    </a>
+                    <p class="text-slate-400 font-mono text-[11px]">slug: <span class="text-indigo-400"><%= s.slug %></span></p>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Live Domain & URL -->
+              <td class="px-5 py-4 font-mono text-slate-300">
+                <a href="https://<%= s.customDomain || s.subdomain %>" target="_blank" class="hover:text-emerald-400 text-slate-200 flex items-center space-x-1 font-semibold" title="Open School Portal">
+                  <span><%= s.subdomain %></span>
+                  <i data-lucide="external-link" class="w-3 h-3 text-slate-500"></i>
+                </a>
+                <% if (s.customDomain) { %>
+                  <div class="text-emerald-400 text-[11px] flex items-center space-x-1 mt-0.5 font-sans">
+                    <i data-lucide="globe" class="w-3 h-3 text-emerald-400"></i>
+                    <span class="font-mono"><%= s.customDomain %></span>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">Custom</span>
+                  </div>
+                <% } %>
+              </td>
+
+              <!-- Database -->
+              <td class="px-5 py-4 font-mono text-slate-400">
+                <div class="flex items-center space-x-1.5">
+                  <i data-lucide="database" class="w-3.5 h-3.5 text-slate-500"></i>
+                  <span><%= s.dbName %></span>
+                </div>
+              </td>
+
+              <!-- Status Badge -->
+              <td class="px-5 py-4">
+                <% if (s.status === 'active') { %>
+                  <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Active</span>
+                  </span>
+                <% } else if (s.status === 'suspended') { %>
+                  <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>Suspended</span>
+                  </span>
+                <% } else { %>
+                  <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                    <span>Stopped</span>
+                  </span>
+                <% } %>
+              </td>
+
+              <!-- Quota -->
+              <td class="px-5 py-4 text-slate-300">
+                <div class="font-semibold"><%= s.storageQuotaGb %> GB</div>
+                <div class="text-[11px] text-slate-500"><%= s.maxStudents %> max students</div>
+              </td>
+
+              <!-- Actions Group -->
+              <td class="px-5 py-4 text-right">
+                <div class="flex items-center justify-end space-x-1.5">
+                  <!-- 1-Click Master SSO -->
+                  <a href="/schools/<%= s.id %>/sso-login" target="_blank" title="1-Click Super Admin Login" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center space-x-1 shadow-sm">
+                    <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                    <span>Login</span>
+                  </a>
+
+                  <!-- Quick Password Reset Trigger -->
+                  <button 
+                    type="button"
+                    @click="openPasswordModal({ id: '<%= s.id %>', name: '<%= (s.name || '').replace(/'/g, "\\'") %>', slug: '<%= s.slug %>', adminEmail: '<%= s.adminEmail || 'admin' %>' })" 
+                    title="Reset Admin Password"
+                    class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs border border-slate-700 transition"
+                  >
+                    <i data-lucide="key" class="w-3.5 h-3.5"></i>
+                  </button>
+
+                  <!-- SQL Backup Download -->
+                  <a href="/schools/<%= s.id %>/backup-db" title="Download SQL Backup Dump" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs border border-slate-700 transition">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                  </a>
+
+                  <!-- Manage Details -->
+                  <a href="/schools/<%= s.id %>" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition">
+                    Manage
+                  </a>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
   </div>
+
+  <!-- Password Reset Modal Dialog -->
+  <div 
+    x-show="passwordModalOpen" 
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+    x-transition
+    style="display: none;"
+  >
+    <div 
+      @click.away="passwordModalOpen = false" 
+      class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative"
+    >
+      <div class="flex items-center justify-between mb-4 border-b border-slate-800/80 pb-3">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+            <i data-lucide="key" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Reset Super Admin Password</h3>
+            <p class="text-[11px] text-slate-400" x-text="selectedSchool.name"></p>
+          </div>
+        </div>
+        <button @click="passwordModalOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form :action="'/schools/' + selectedSchool.id + '/reset-password'" method="POST" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Target Admin Username / Email</label>
+          <input 
+            type="text" 
+            :value="selectedSchool.adminEmail" 
+            disabled 
+            class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-400 cursor-not-allowed"
+          >
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-medium text-slate-300">New Password</label>
+            <button 
+              type="button" 
+              @click="generateStrongPassword()" 
+              class="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1"
+            >
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+              <span>Regenerate</span>
+            </button>
+          </div>
+          <div class="flex items-center space-x-2">
+            <input 
+              type="text" 
+              name="newPassword" 
+              x-model="newPassword" 
+              required 
+              minlength="6"
+              class="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:outline-none focus:border-indigo-500"
+            >
+            <button 
+              type="button" 
+              @click="copyPassword()" 
+              class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium border border-slate-700 transition flex items-center space-x-1 shrink-0"
+            >
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span x-text="copied ? 'Copied!' : 'Copy'"></span>
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">This will instantly overwrite the admin user password inside the tenant database.</p>
+        </div>
+
+        <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
+          <button 
+            type="button" 
+            @click="passwordModalOpen = false" 
+            class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-amber-600/20"
+          >
+            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+            <span>Confirm Reset</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </div>
 
 <%- include('partials/footer') %>
-

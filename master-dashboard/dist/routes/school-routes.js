@@ -47,6 +47,24 @@ router.get('/', async (req, res) => {
         error: req.query.error || null,
     });
 });
+// 1.1 CSV Fleet Export
+router.get('/export/csv', async (req, res) => {
+    const schools = await master_db_1.MasterDb.getSchools();
+    const clients = await master_db_1.MasterDb.getClients();
+    const networks = await master_db_1.MasterDb.getNetworks();
+    let csv = 'ID,School Name,Slug,Subdomain,Custom Domain,Status,Client,Network,Storage (GB),Max Students,Created At\n';
+    for (const s of schools) {
+        const client = clients.find((c) => c.id === s.clientId)?.name || 'Direct';
+        const network = networks.find((n) => n.id === s.networkId)?.name || 'Standalone';
+        const cleanName = `"${(s.name || '').replace(/"/g, '""')}"`;
+        const cleanSub = `"${(s.subdomain || '').replace(/"/g, '""')}"`;
+        const cleanCustom = `"${(s.customDomain || '').replace(/"/g, '""')}"`;
+        csv += `${s.id},${cleanName},${s.slug},${cleanSub},${cleanCustom},${s.status},"${client}","${network}",${s.storageQuotaGb},${s.maxStudents},${s.createdAt}\n`;
+    }
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="primeschool-fleet-${new Date().toISOString().slice(0, 10)}.csv"`);
+    return res.status(200).send(csv);
+});
 // 2. New School Form
 router.get('/new', async (req, res) => {
     const hostHeader = (req.headers['x-forwarded-host'] || req.headers.host);
