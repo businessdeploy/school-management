@@ -124,9 +124,9 @@
             </td>
             <td class="px-4 py-3 text-center font-bold text-slate-200"><%= s.studentsCount %></td>
             <td class="px-4 py-3 text-center font-bold text-slate-200"><%= s.staffCount %></td>
-            <td class="px-4 py-3 text-right font-mono text-slate-300">$<%= s.totalFeesInvoiced.toLocaleString() %></td>
-            <td class="px-4 py-3 text-right font-mono text-emerald-400 font-bold">$<%= s.totalFeesCollected.toLocaleString() %></td>
-            <td class="px-4 py-3 text-right font-mono text-amber-400">$<%= s.outstandingFees.toLocaleString() %></td>
+            <td class="px-4 py-3 text-right font-mono text-slate-300">₹<%= s.totalFeesInvoiced.toLocaleString('en-IN') %></td>
+            <td class="px-4 py-3 text-right font-mono text-emerald-400 font-bold">₹<%= s.totalFeesCollected.toLocaleString('en-IN') %></td>
+            <td class="px-4 py-3 text-right font-mono text-amber-400">₹<%= s.outstandingFees.toLocaleString('en-IN') %></td>
           </tr>
         <% }); %>
       </tbody>
@@ -135,9 +135,9 @@
           <td class="px-4 py-3 uppercase text-[11px] text-slate-400">Total Fleet Sum</td>
           <td class="px-4 py-3 text-center text-indigo-400 font-extrabold"><%= telemetry.totalStudents.toLocaleString() %></td>
           <td class="px-4 py-3 text-center text-indigo-400 font-extrabold"><%= telemetry.totalStaff.toLocaleString() %></td>
-          <td class="px-4 py-3 text-right font-mono">$<%= (telemetry.totalCollected + telemetry.totalOutstanding).toLocaleString() %></td>
-          <td class="px-4 py-3 text-right font-mono text-emerald-400 font-extrabold">$<%= telemetry.totalCollected.toLocaleString() %></td>
-          <td class="px-4 py-3 text-right font-mono text-amber-400 font-extrabold">$<%= telemetry.totalOutstanding.toLocaleString() %></td>
+          <td class="px-4 py-3 text-right font-mono">₹<%= (telemetry.totalCollected + telemetry.totalOutstanding).toLocaleString('en-IN') %></td>
+          <td class="px-4 py-3 text-right font-mono text-emerald-400 font-extrabold">₹<%= telemetry.totalCollected.toLocaleString('en-IN') %></td>
+          <td class="px-4 py-3 text-right font-mono text-amber-400 font-extrabold">₹<%= telemetry.totalOutstanding.toLocaleString('en-IN') %></td>
         </tr>
       </tfoot>
     </table>
@@ -175,7 +175,7 @@
             </td>
             <td class="px-4 py-3 text-slate-400"><%= p.paymentMode %></td>
             <td class="px-4 py-3 text-slate-500 font-mono text-[11px]"><%= p.date %></td>
-            <td class="px-4 py-3 text-right font-mono font-bold text-emerald-400">+$<%= p.amount.toLocaleString() %></td>
+            <td class="px-4 py-3 text-right font-mono font-bold text-emerald-400">+₹<%= p.amount.toLocaleString('en-IN') %></td>
           </tr>
         <% }); %>
       </tbody>

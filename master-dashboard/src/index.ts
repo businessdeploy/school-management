@@ -34,6 +34,30 @@ let lastError: any = null;
 DockerService.init();
 GatewayProxy.init();
 
+// Auto-migrate all tenant databases to INR currency (₹)
+setTimeout(async () => {
+  try {
+    const isDbReady = await FleetDb.testConnection();
+    if (isDbReady) {
+      const schools = await MasterDb.getSchools();
+      for (const school of schools) {
+        if (!school.dbName) continue;
+        try {
+          await FleetDb.executeQuery(
+            school.dbName,
+            "UPDATE `sch_settings` SET `currency` = '68', `currency_symbol` = '₹' WHERE `currency_symbol` != '₹' OR `currency` != '68'"
+          );
+          console.log(`[Currency Sync] Enforced INR (₹) for tenant: ${school.slug}`);
+        } catch (e: any) {
+          // Skip uninitialized or non-standard databases
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Currency Sync Error]:', err);
+  }
+}, 3000);
+
 // 2. View Engine (EJS)
 const viewsPath = fs.existsSync(path.join(__dirname, 'views'))
   ? path.join(__dirname, 'views')

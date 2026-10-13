@@ -142,7 +142,7 @@ router.post('/create', (0, permissions_1.requirePermission)(permissions_2.PERMIS
                     domain: cleanCustomDomain || subdomain,
                     adminEmail,
                     adminPassword: adminPassword || 'Admin@123456',
-                    currencySymbol: currencySymbol || '$',
+                    currencySymbol: currencySymbol || '₹',
                     timezone: timezone || 'UTC',
                 });
             });

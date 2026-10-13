@@ -57,9 +57,9 @@ class SeedInstaller {
         const baseUrl = options.domain.includes('localhost')
             ? `http://${options.domain}/`
             : `https://${options.domain}/`;
-        const timezone = options.timezone || 'UTC';
-        const currency = options.currencySymbol || '$';
-        await fleet_db_1.FleetDb.executeQuery(dbName, `UPDATE \`sch_settings\` SET \`name\` = ?, \`email\` = ?, \`base_url\` = ?, \`currency_symbol\` = ?, \`timezone\` = ?, \`admin_logo\` = '1.svg', \`admin_small_logo\` = '1.svg', \`image\` = '1.svg', \`app_logo\` = '1.svg' WHERE \`id\` = 1`, [options.name, options.adminEmail, baseUrl, currency, timezone]);
+        const timezone = options.timezone || 'Asia/Kolkata';
+        const currency = options.currencySymbol || '₹';
+        await fleet_db_1.FleetDb.executeQuery(dbName, `UPDATE \`sch_settings\` SET \`name\` = ?, \`email\` = ?, \`base_url\` = ?, \`currency\` = '68', \`currency_symbol\` = ?, \`timezone\` = ?, \`admin_logo\` = '1.svg', \`admin_small_logo\` = '1.svg', \`image\` = '1.svg', \`app_logo\` = '1.svg' WHERE \`id\` = 1`, [options.name, options.adminEmail, baseUrl, currency, timezone]);
         // 5b. Pre-configure Platform Mailjet SMTP
         const fromEmail = config_1.config.smtp.from.includes('<')
             ? (config_1.config.smtp.from.match(/<([^>]+)>/)?.[1] || 'nitin@businessdeploy.com')

@@ -414,14 +414,30 @@ export class DataAggregator {
            ORDER BY d.id DESC LIMIT 5`
         );
         for (const row of rows) {
+          let amt = 0;
+          if (row.amount_detail) {
+            try {
+              const parsed = typeof row.amount_detail === 'string' ? JSON.parse(row.amount_detail) : row.amount_detail;
+              if (typeof parsed === 'object') {
+                for (const key of Object.keys(parsed)) {
+                  const val = parseFloat(parsed[key]?.amount || parsed[key]?.amount_discount || '0');
+                  if (!isNaN(val)) amt += val;
+                }
+              } else {
+                amt = parseFloat(row.amount_detail) || 0;
+              }
+            } catch {
+              amt = parseFloat(row.amount_detail) || 0;
+            }
+          }
           records.push({
             schoolName: school.name,
             schoolSlug: school.slug,
             invoiceId: row.id,
             studentName: row.student_name,
             admissionNo: row.admission_no,
-            amount: parseFloat(row.amount_detail || '0'),
-            paymentMode: 'Online Payment',
+            amount: amt,
+            paymentMode: 'Online / Bank',
             date: new Date(row.created_at || Date.now()).toLocaleDateString(),
           });
         }

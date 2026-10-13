@@ -181,7 +181,7 @@ router.post('/create', requirePermission(PERMISSIONS.SCHOOLS_CREATE), async (req
           domain: cleanCustomDomain || subdomain,
           adminEmail,
           adminPassword: adminPassword || 'Admin@123456',
-          currencySymbol: currencySymbol || '$',
+          currencySymbol: currencySymbol || '₹',
           timezone: timezone || 'UTC',
         });
       });

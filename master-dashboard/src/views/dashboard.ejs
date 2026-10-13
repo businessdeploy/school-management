@@ -82,7 +82,7 @@
       </div>
     </div>
     <div class="flex items-baseline space-x-2">
-      <span class="text-3xl font-extrabold text-white">$<%= telemetry.totalCollected.toLocaleString() %></span>
+      <span class="text-3xl font-extrabold text-white">₹<%= telemetry.totalCollected.toLocaleString('en-IN') %></span>
       <span class="text-xs text-purple-400 font-medium">Aggregated</span>
     </div>
     <p class="text-[11px] text-slate-400 mt-2">Real-time payment ledger</p>
@@ -272,7 +272,7 @@
             </div>
             <div>
               <span class="text-slate-400 block text-[10px] uppercase font-semibold">Fees</span>
-              <span class="font-bold text-emerald-400 text-xs sm:text-sm">$<%= s.totalFeesCollected.toLocaleString() %></span>
+              <span class="font-bold text-emerald-400 text-xs sm:text-sm">₹<%= s.totalFeesCollected.toLocaleString('en-IN') %></span>
             </div>
           </div>
         </div>
@@ -308,7 +308,7 @@
 
     const revenueOptions = {
       series: [{
-        name: 'Collections ($)',
+        name: 'Collections (₹)',
         data: <%- JSON.stringify(trendCollections) %>
       }],
       chart: {
@@ -342,13 +342,13 @@
       yaxis: {
         labels: {
           style: { colors: '#94a3b8', fontSize: '11px' },
-          formatter: function (val) { return '$' + (val / 1000).toFixed(0) + 'k'; }
+          formatter: function (val) { return '₹' + (val / 1000).toFixed(0) + 'k'; }
         }
       },
       theme: { mode: 'dark' },
       tooltip: {
         theme: 'dark',
-        y: { formatter: function (val) { return '$' + Number(val).toLocaleString(); } }
+        y: { formatter: function (val) { return '₹' + Number(val).toLocaleString('en-IN'); } }
       }
     };
 
