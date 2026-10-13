@@ -108,6 +108,21 @@ app.get('/api/v1/health-diag', async (req, res) => {
     catch (e) {
         phpPort8080 = `error: ${e.message}`;
     }
+    let sarnaSchool = null;
+    try {
+        sarnaSchool = await master_db_1.MasterDb.getSchoolByDomain('ghss-sarna.manage-school-crm.4d68er.easypanel.host');
+    }
+    catch (err) {
+        sarnaSchool = { error: err.message };
+    }
+    let dbList = [];
+    try {
+        const dbs = await fleet_db_1.FleetDb.executeQuery(config_1.config.fleetDb.masterDatabase, 'SHOW DATABASES');
+        dbList = dbs.map((r) => Object.values(r)[0]);
+    }
+    catch (err) {
+        dbList = [`error: ${err.message}`];
+    }
     res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -118,6 +133,8 @@ app.get('/api/v1/health-diag', async (req, res) => {
         dbError,
         sessionTable,
         phpPort8080,
+        sarnaSchool,
+        dbList,
         lastError,
     });
 });

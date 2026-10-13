@@ -23,6 +23,16 @@ if [ -d "/var/www/html/tenants" ]; then
 fi
 mkdir -p /app/public
 cp -r /var/www/html/master-dashboard/public/* /app/public/ 2>/dev/null || true
+
+echo "[DockerEntrypoint] Passing container environment to Apache..."
+for var in FLEET_DB_HOST FLEET_DB_PORT FLEET_DB_USER FLEET_DB_PASSWORD MASTER_DB_NAME DOCKER_NETWORK DB_HOST DB_USER DB_PASS DB_NAME MASTER_SSO_SECRET SESSION_SECRET NODE_ENV CI_ENV; do
+    val=$(eval echo "\"\$$var\"")
+    if [ -n "$val" ]; then
+        echo "export $var=\"$val\"" >> /etc/apache2/envvars
+    fi
+done
+echo "PassEnv FLEET_DB_HOST FLEET_DB_PORT FLEET_DB_USER FLEET_DB_PASSWORD MASTER_DB_NAME DOCKER_NETWORK DB_HOST DB_USER DB_PASS DB_NAME MASTER_SSO_SECRET SESSION_SECRET NODE_ENV CI_ENV" >> /etc/apache2/apache2.conf 2>/dev/null || true
+
 service apache2 start || apache2ctl start || true
 
 echo "[DockerEntrypoint] Starting Prime School Fleet Master Orchestrator on port 3000..."
