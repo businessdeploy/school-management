@@ -51,6 +51,7 @@ export interface AdminUserRecord {
   displayName?: string;
   role: string;
   isActive: boolean;
+  mfaSecret?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -170,14 +171,11 @@ export class MasterDb {
     return MasterRepository.getAdminUserByUsername(username);
   }
 
-  public static async verifyAdminCredentials(
-    username: string,
-    password: string
-  ): Promise<{ username: string; role: string } | null> {
+  public static async authenticateAdmin(username: string, password: string): Promise<AdminUserRecord | null> {
     const user = await MasterRepository.getAdminUserByUsername(username);
     if (!user || !user.isActive) return null;
     if (!bcrypt.compareSync(password, user.passwordHash)) return null;
-    return { username: user.username, role: user.role };
+    return user;
   }
 
   private static async seedInitialAdminIfNeeded(): Promise<void> {
@@ -230,6 +228,10 @@ export class MasterDb {
 
   public static async setAdminUserActive(id: string, isActive: boolean): Promise<boolean> {
     return MasterRepository.updateAdminUser(id, { isActive });
+  }
+
+  public static async setAdminUserMfaSecret(id: string, secret: string | null): Promise<boolean> {
+    return MasterRepository.setAdminUserMfaSecret(id, secret);
   }
 
   // ---- Legacy JSON import ----

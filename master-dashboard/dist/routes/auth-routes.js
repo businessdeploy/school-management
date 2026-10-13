@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireAuth = requireAuth;
 const express_1 = require("express");
 const master_db_1 = require("../db/master-db");
+const totp_1 = require("../services/totp");
 const router = (0, express_1.Router)();
 const MAX_FAILED_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
@@ -40,6 +41,19 @@ function recordFailure(key) {
 function clearFailures(key) {
     loginThrottle.delete(key);
 }
+function completeLogin(req, res, username, role) {
+    req.session.regenerate((err) => {
+        if (err) {
+            console.error('[Auth] Session regeneration failed:', err);
+            return res.render('login', {
+                error: 'Unable to start a session. Please try again.',
+            });
+        }
+        req.session.isAuthenticated = true;
+        req.session.user = { username, role };
+        return res.redirect('/');
+    });
+}
 function requireAuth(req, res, next) {
     if (req.session?.isAuthenticated) {
         return next();
@@ -60,24 +74,45 @@ router.post('/login', async (req, res) => {
         });
     }
     const { username, password } = req.body;
-    const admin = await master_db_1.MasterDb.verifyAdminCredentials(username, password);
+    const admin = await master_db_1.MasterDb.authenticateAdmin(username, password);
     if (admin) {
         clearFailures(key);
-        req.session.regenerate((err) => {
-            if (err) {
-                console.error('[Auth] Session regeneration failed:', err);
-                return res.render('login', {
-                    error: 'Unable to start a session. Please try again.',
-                });
-            }
-            req.session.isAuthenticated = true;
-            req.session.user = { username: admin.username, role: admin.role };
-            return res.redirect('/');
-        });
+        if (admin.mfaSecret) {
+            req.session.pendingMfaUser = { username: admin.username, role: admin.role };
+            return res.redirect('/auth/mfa');
+        }
+        completeLogin(req, res, admin.username, admin.role);
         return;
     }
     recordFailure(key);
     return res.render('login', { error: 'Invalid master credentials. Please try again.' });
+});
+router.get('/mfa', (req, res) => {
+    if (req.session?.isAuthenticated) {
+        return res.redirect('/');
+    }
+    const pending = req.session?.pendingMfaUser;
+    if (!pending) {
+        return res.redirect('/auth/login');
+    }
+    res.render('mfa', { error: null });
+});
+router.post('/mfa', async (req, res) => {
+    const pending = req.session?.pendingMfaUser;
+    if (!pending) {
+        return res.redirect('/auth/login');
+    }
+    const { code } = req.body;
+    const user = await master_db_1.MasterDb.getAdminUserByUsername(pending.username);
+    if (!user || !user.mfaSecret) {
+        return res.redirect('/auth/login');
+    }
+    if ((0, totp_1.verifyTotp)(user.mfaSecret, code)) {
+        req.session.pendingMfaUser = null;
+        completeLogin(req, res, user.username, user.role);
+        return;
+    }
+    return res.render('mfa', { error: 'Invalid verification code. Please try again.' });
 });
 router.get('/logout', (req, res) => {
     req.session.destroy(() => {

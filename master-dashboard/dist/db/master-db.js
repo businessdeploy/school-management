@@ -109,13 +109,13 @@ class MasterDb {
     static async getAdminUserByUsername(username) {
         return master_repository_1.MasterRepository.getAdminUserByUsername(username);
     }
-    static async verifyAdminCredentials(username, password) {
+    static async authenticateAdmin(username, password) {
         const user = await master_repository_1.MasterRepository.getAdminUserByUsername(username);
         if (!user || !user.isActive)
             return null;
         if (!bcryptjs_1.default.compareSync(password, user.passwordHash))
             return null;
-        return { username: user.username, role: user.role };
+        return user;
     }
     static async seedInitialAdminIfNeeded() {
         const existing = await master_repository_1.MasterRepository.listAdminUsers();
@@ -158,6 +158,9 @@ class MasterDb {
     }
     static async setAdminUserActive(id, isActive) {
         return master_repository_1.MasterRepository.updateAdminUser(id, { isActive });
+    }
+    static async setAdminUserMfaSecret(id, secret) {
+        return master_repository_1.MasterRepository.setAdminUserMfaSecret(id, secret);
     }
     // ---- Legacy JSON import ----
     static assertUnique(values, label) {

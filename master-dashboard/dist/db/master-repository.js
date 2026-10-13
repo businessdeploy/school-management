@@ -59,6 +59,7 @@ const MASTER_SCHEMA_STATEMENTS = [
     display_name VARCHAR(191) NULL,
     role VARCHAR(32) NOT NULL DEFAULT 'superadmin',
     is_active TINYINT(1) NOT NULL DEFAULT 1,
+    mfa_secret VARCHAR(255) NULL,
     created_at VARCHAR(64) NOT NULL,
     updated_at VARCHAR(64) NOT NULL,
     UNIQUE KEY uq_admin_users_username (username)
@@ -119,6 +120,7 @@ function mapAdminUserRow(row) {
         displayName: row.display_name || undefined,
         role: row.role,
         isActive: !!row.is_active,
+        mfaSecret: row.mfa_secret || undefined,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -275,6 +277,7 @@ class MasterRepository {
             display_name: updates.displayName || null,
             role: updates.role,
             is_active: updates.isActive === undefined ? undefined : updates.isActive ? 1 : 0,
+            mfa_secret: updates.mfaSecret === undefined ? undefined : updates.mfaSecret || null,
         };
         const columns = Object.entries(fields).filter(([, v]) => v !== undefined);
         if (columns.length === 0)
@@ -286,15 +289,24 @@ class MasterRepository {
         const result = await masterQuery(`UPDATE admin_users SET ${setClause}, updated_at = ? WHERE id = ?`, params);
         return result?.affectedRows === 1;
     }
+    static async setAdminUserMfaSecret(id, secret) {
+        const result = await masterQuery('UPDATE admin_users SET mfa_secret = ?, updated_at = ? WHERE id = ?', [
+            secret,
+            new Date().toISOString(),
+            id,
+        ]);
+        return result?.affectedRows === 1;
+    }
     static async createAdminUser(user) {
-        await masterQuery(`INSERT INTO admin_users (id, username, password_hash, display_name, role, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [
+        await masterQuery(`INSERT INTO admin_users (id, username, password_hash, display_name, role, is_active, mfa_secret, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
             user.id,
             user.username,
             user.passwordHash,
             user.displayName || null,
             user.role,
             user.isActive ? 1 : 0,
+            user.mfaSecret || null,
             user.createdAt,
             user.updatedAt,
         ]);

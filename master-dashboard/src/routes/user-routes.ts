@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { MasterDb } from '../db/master-db';
 import { ROLES } from '../permissions';
+import { generateTotpSecret, verifyTotp, buildOtpauthUrl } from '../services/totp';
 
 const router = Router();
 
@@ -67,6 +68,55 @@ router.post('/:id/toggle-active', async (req: Request, res: Response) => {
 
   await MasterDb.setAdminUserActive(user.id, nextActive);
   res.redirect('/users?success=' + encodeURIComponent(`User "${user.username}" ${nextActive ? 'activated' : 'deactivated'}.`));
+});
+
+router.get('/:id/mfa-setup', async (req: Request, res: Response) => {
+  const user = await MasterDb.getAdminUserById(req.params.id);
+  if (!user) return res.redirect('/users');
+
+  const secret = generateTotpSecret();
+  (req.session as any).pendingMfaSetup = { userId: user.id, secret };
+
+  res.render('mfa-setup', {
+    pageTitle: 'Setup MFA',
+    user,
+    secret,
+    otpauthUrl: buildOtpauthUrl('Prime School Fleet', user.username, secret),
+    error: null,
+  });
+});
+
+router.post('/:id/mfa-confirm', async (req: Request, res: Response) => {
+  const user = await MasterDb.getAdminUserById(req.params.id);
+  if (!user) return res.redirect('/users');
+
+  const pending = (req.session as any)?.pendingMfaSetup;
+  if (!pending || pending.userId !== user.id) {
+    return res.redirect('/users?error=' + encodeURIComponent('MFA setup session expired. Please try again.'));
+  }
+
+  const { code } = req.body;
+  if (!verifyTotp(pending.secret, code)) {
+    return res.render('mfa-setup', {
+      pageTitle: 'Setup MFA',
+      user,
+      secret: pending.secret,
+      otpauthUrl: buildOtpauthUrl('Prime School Fleet', user.username, pending.secret),
+      error: 'Invalid code. Please try again.',
+    });
+  }
+
+  await MasterDb.setAdminUserMfaSecret(user.id, pending.secret);
+  (req.session as any).pendingMfaSetup = null;
+  res.redirect('/users?success=' + encodeURIComponent(`MFA enabled for "${user.username}".`));
+});
+
+router.post('/:id/mfa-disable', async (req: Request, res: Response) => {
+  const user = await MasterDb.getAdminUserById(req.params.id);
+  if (!user) return res.redirect('/users');
+
+  await MasterDb.setAdminUserMfaSecret(user.id, null);
+  res.redirect('/users?success=' + encodeURIComponent(`MFA disabled for "${user.username}".`));
 });
 
 export default router;

@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { MasterDb } from '../db/master-db';
+import { verifyTotp } from '../services/totp';
 
 const router = Router();
 
@@ -49,6 +50,20 @@ function clearFailures(key: string): void {
   loginThrottle.delete(key);
 }
 
+function completeLogin(req: Request, res: Response, username: string, role: string): void {
+  req.session.regenerate((err) => {
+    if (err) {
+      console.error('[Auth] Session regeneration failed:', err);
+      return res.render('login', {
+        error: 'Unable to start a session. Please try again.',
+      });
+    }
+    (req.session as any).isAuthenticated = true;
+    (req.session as any).user = { username, role };
+    return res.redirect('/');
+  });
+}
+
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if ((req.session as any)?.isAuthenticated) {
     return next();
@@ -73,25 +88,51 @@ router.post('/login', async (req: Request, res: Response) => {
 
   const { username, password } = req.body;
 
-  const admin = await MasterDb.verifyAdminCredentials(username, password);
+  const admin = await MasterDb.authenticateAdmin(username, password);
   if (admin) {
     clearFailures(key);
-    req.session.regenerate((err) => {
-      if (err) {
-        console.error('[Auth] Session regeneration failed:', err);
-        return res.render('login', {
-          error: 'Unable to start a session. Please try again.',
-        });
-      }
-      (req.session as any).isAuthenticated = true;
-      (req.session as any).user = { username: admin.username, role: admin.role };
-      return res.redirect('/');
-    });
+    if (admin.mfaSecret) {
+      (req.session as any).pendingMfaUser = { username: admin.username, role: admin.role };
+      return res.redirect('/auth/mfa');
+    }
+    completeLogin(req, res, admin.username, admin.role);
     return;
   }
 
   recordFailure(key);
   return res.render('login', { error: 'Invalid master credentials. Please try again.' });
+});
+
+router.get('/mfa', (req: Request, res: Response) => {
+  if ((req.session as any)?.isAuthenticated) {
+    return res.redirect('/');
+  }
+  const pending = (req.session as any)?.pendingMfaUser;
+  if (!pending) {
+    return res.redirect('/auth/login');
+  }
+  res.render('mfa', { error: null });
+});
+
+router.post('/mfa', async (req: Request, res: Response) => {
+  const pending = (req.session as any)?.pendingMfaUser;
+  if (!pending) {
+    return res.redirect('/auth/login');
+  }
+
+  const { code } = req.body;
+  const user = await MasterDb.getAdminUserByUsername(pending.username);
+  if (!user || !user.mfaSecret) {
+    return res.redirect('/auth/login');
+  }
+
+  if (verifyTotp(user.mfaSecret, code)) {
+    (req.session as any).pendingMfaUser = null;
+    completeLogin(req, res, user.username, user.role);
+    return;
+  }
+
+  return res.render('mfa', { error: 'Invalid verification code. Please try again.' });
 });
 
 router.get('/logout', (req: Request, res: Response) => {

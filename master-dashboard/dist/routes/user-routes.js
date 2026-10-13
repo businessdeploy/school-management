@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const master_db_1 = require("../db/master-db");
 const permissions_1 = require("../permissions");
+const totp_1 = require("../services/totp");
 const router = (0, express_1.Router)();
 router.get('/', async (req, res) => {
     const users = await master_db_1.MasterDb.listAdminUsers();
@@ -61,5 +62,48 @@ router.post('/:id/toggle-active', async (req, res) => {
     }
     await master_db_1.MasterDb.setAdminUserActive(user.id, nextActive);
     res.redirect('/users?success=' + encodeURIComponent(`User "${user.username}" ${nextActive ? 'activated' : 'deactivated'}.`));
+});
+router.get('/:id/mfa-setup', async (req, res) => {
+    const user = await master_db_1.MasterDb.getAdminUserById(req.params.id);
+    if (!user)
+        return res.redirect('/users');
+    const secret = (0, totp_1.generateTotpSecret)();
+    req.session.pendingMfaSetup = { userId: user.id, secret };
+    res.render('mfa-setup', {
+        pageTitle: 'Setup MFA',
+        user,
+        secret,
+        otpauthUrl: (0, totp_1.buildOtpauthUrl)('Prime School Fleet', user.username, secret),
+        error: null,
+    });
+});
+router.post('/:id/mfa-confirm', async (req, res) => {
+    const user = await master_db_1.MasterDb.getAdminUserById(req.params.id);
+    if (!user)
+        return res.redirect('/users');
+    const pending = req.session?.pendingMfaSetup;
+    if (!pending || pending.userId !== user.id) {
+        return res.redirect('/users?error=' + encodeURIComponent('MFA setup session expired. Please try again.'));
+    }
+    const { code } = req.body;
+    if (!(0, totp_1.verifyTotp)(pending.secret, code)) {
+        return res.render('mfa-setup', {
+            pageTitle: 'Setup MFA',
+            user,
+            secret: pending.secret,
+            otpauthUrl: (0, totp_1.buildOtpauthUrl)('Prime School Fleet', user.username, pending.secret),
+            error: 'Invalid code. Please try again.',
+        });
+    }
+    await master_db_1.MasterDb.setAdminUserMfaSecret(user.id, pending.secret);
+    req.session.pendingMfaSetup = null;
+    res.redirect('/users?success=' + encodeURIComponent(`MFA enabled for "${user.username}".`));
+});
+router.post('/:id/mfa-disable', async (req, res) => {
+    const user = await master_db_1.MasterDb.getAdminUserById(req.params.id);
+    if (!user)
+        return res.redirect('/users');
+    await master_db_1.MasterDb.setAdminUserMfaSecret(user.id, null);
+    res.redirect('/users?success=' + encodeURIComponent(`MFA disabled for "${user.username}".`));
 });
 exports.default = router;
