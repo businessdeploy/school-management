@@ -27,8 +27,7 @@ class SeedInstaller {
         // 2. Check if Fleet DB is reachable
         const isDbOnline = await fleet_db_1.FleetDb.testConnection();
         if (!isDbOnline) {
-            console.warn(`[Provisioner] Fleet MariaDB is not reachable at ${config_1.config.fleetDb.host}:${config_1.config.fleetDb.port}. Registering metadata in master store.`);
-            return;
+            throw new Error(`Fleet MariaDB is not reachable at ${config_1.config.fleetDb.host}:${config_1.config.fleetDb.port}.`);
         }
         // 3. Create Database
         await fleet_db_1.FleetDb.createDatabase(dbName);
@@ -52,42 +51,32 @@ class SeedInstaller {
             }
         }
         else {
-            console.warn(`[Provisioner] Seed SQL not found at ${config_1.config.sqlSeedPath}. Skipping schema import.`);
+            throw new Error(`Seed SQL not found at ${config_1.config.sqlSeedPath}.`);
         }
         // 5. Update sch_settings
-        try {
-            const baseUrl = options.domain.includes('localhost')
-                ? `http://${options.domain}/`
-                : `https://${options.domain}/`;
-            const timezone = options.timezone || 'UTC';
-            const currency = options.currencySymbol || '$';
-            await fleet_db_1.FleetDb.executeQuery(dbName, `UPDATE \`sch_settings\` SET \`name\` = ?, \`email\` = ?, \`base_url\` = ?, \`currency_symbol\` = ?, \`timezone\` = ?, \`admin_logo\` = '1.svg', \`admin_small_logo\` = '1.svg', \`image\` = '1.svg', \`app_logo\` = '1.svg' WHERE \`id\` = 1`, [options.name, options.adminEmail, baseUrl, currency, timezone]);
-        }
-        catch (err) {
-            console.error(`[Provisioner] Error updating sch_settings in ${dbName}:`, err);
-        }
+        const baseUrl = options.domain.includes('localhost')
+            ? `http://${options.domain}/`
+            : `https://${options.domain}/`;
+        const timezone = options.timezone || 'UTC';
+        const currency = options.currencySymbol || '$';
+        await fleet_db_1.FleetDb.executeQuery(dbName, `UPDATE \`sch_settings\` SET \`name\` = ?, \`email\` = ?, \`base_url\` = ?, \`currency_symbol\` = ?, \`timezone\` = ?, \`admin_logo\` = '1.svg', \`admin_small_logo\` = '1.svg', \`image\` = '1.svg', \`app_logo\` = '1.svg' WHERE \`id\` = 1`, [options.name, options.adminEmail, baseUrl, currency, timezone]);
         // 6. Insert / Update Super Admin Staff
-        try {
-            const adminPass = options.adminPassword || 'Admin@123456';
-            // PHP password_hash uses bcrypt ($2y$), Node's bcrypt matches verification
-            const salt = bcryptjs_1.default.genSaltSync(10);
-            const hashedPassword = bcryptjs_1.default.hashSync(adminPass, salt).replace(/^\$2a\$/, '$2y$');
-            // Check if employee 9000 exists
-            const existing = await fleet_db_1.FleetDb.executeQuery(dbName, `SELECT id FROM \`staff\` WHERE \`employee_id\` = '9000' OR \`email\` = ? LIMIT 1`, [options.adminEmail]);
-            if (Array.isArray(existing) && existing.length > 0) {
-                await fleet_db_1.FleetDb.executeQuery(dbName, `UPDATE \`staff\` SET \`email\` = ?, \`password\` = ?, \`is_active\` = 1 WHERE \`id\` = ?`, [options.adminEmail, hashedPassword, existing[0].id]);
-            }
-            else {
-                const staffResult = await fleet_db_1.FleetDb.executeQuery(dbName, `INSERT INTO \`staff\` (\`employee_id\`, \`name\`, \`surname\`, \`dob\`, \`gender\`, \`email\`, \`password\`, \`is_active\`) 
-           VALUES ('9000', 'Super', 'Admin', '2000-01-01', 'Male', ?, ?, 1)`, [options.adminEmail, hashedPassword]);
-                const newStaffId = staffResult.insertId || 1;
-                await fleet_db_1.FleetDb.executeQuery(dbName, `INSERT INTO \`staff_roles\` (\`staff_id\`, \`role_id\`) VALUES (?, 7)`, [newStaffId]);
-            }
-            console.log(`[Provisioner] Super Admin created for ${options.adminEmail}`);
+        const adminPass = options.adminPassword || 'Admin@123456';
+        // PHP password_hash uses bcrypt ($2y$), Node's bcrypt matches verification
+        const salt = bcryptjs_1.default.genSaltSync(10);
+        const hashedPassword = bcryptjs_1.default.hashSync(adminPass, salt).replace(/^\$2a\$/, '$2y$');
+        // Check if employee 9000 exists
+        const existing = await fleet_db_1.FleetDb.executeQuery(dbName, `SELECT id FROM \`staff\` WHERE \`employee_id\` = '9000' OR \`email\` = ? LIMIT 1`, [options.adminEmail]);
+        if (Array.isArray(existing) && existing.length > 0) {
+            await fleet_db_1.FleetDb.executeQuery(dbName, `UPDATE \`staff\` SET \`email\` = ?, \`password\` = ?, \`is_active\` = 1 WHERE \`id\` = ?`, [options.adminEmail, hashedPassword, existing[0].id]);
         }
-        catch (err) {
-            console.error(`[Provisioner] Error setting up Super Admin in ${dbName}:`, err);
+        else {
+            const staffResult = await fleet_db_1.FleetDb.executeQuery(dbName, `INSERT INTO \`staff\` (\`employee_id\`, \`name\`, \`surname\`, \`dob\`, \`gender\`, \`email\`, \`password\`, \`is_active\`) 
+         VALUES ('9000', 'Super', 'Admin', '2000-01-01', 'Male', ?, ?, 1)`, [options.adminEmail, hashedPassword]);
+            const newStaffId = staffResult.insertId || 1;
+            await fleet_db_1.FleetDb.executeQuery(dbName, `INSERT INTO \`staff_roles\` (\`staff_id\`, \`role_id\`) VALUES (?, 7)`, [newStaffId]);
         }
+        console.log(`[Provisioner] Super Admin created for ${options.adminEmail}`);
     }
 }
 exports.SeedInstaller = SeedInstaller;

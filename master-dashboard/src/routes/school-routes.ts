@@ -154,7 +154,7 @@ router.post('/create', requirePermission(PERMISSIONS.SCHOOLS_CREATE), async (req
     });
 
     // 3. Launch isolated container
-    await DockerService.launchTenantContainer({
+    const launched = await DockerService.launchTenantContainer({
        slug: cleanSlug,
        containerName,
        dbName,
@@ -162,7 +162,12 @@ router.post('/create', requirePermission(PERMISSIONS.SCHOOLS_CREATE), async (req
        ramLimitMb: 512,
      });
 
-    // 4. Register Traefik domain in Easypanel for instant live access
+    if (!launched) {
+      await MasterDb.updateSchool(newSchool.id, { status: 'stopped' });
+      throw new Error('Failed to launch tenant container.');
+    }
+
+    // 4. Register Traefik domain in Easypanel for instant live access (optional)
     await EasypanelService.registerDomain(subdomain);
     if (cleanCustomDomain) {
       await EasypanelService.registerDomain(cleanCustomDomain);

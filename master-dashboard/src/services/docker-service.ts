@@ -24,7 +24,7 @@ export class DockerService {
   }
 
   public static async checkContainerStatus(containerName: string): Promise<'running' | 'stopped' | 'not_found'> {
-    if (!this.docker || !this.isAvailable) return 'running'; // Emulated default
+    if (!this.docker || !this.isAvailable) return config.demoMode ? 'running' : 'not_found';
 
     try {
       const container = this.docker.getContainer(containerName);
@@ -43,6 +43,7 @@ export class DockerService {
     ramLimitMb?: number;
   }): Promise<boolean> {
     if (!this.docker || !this.isAvailable) {
+      if (!config.demoMode) return false;
       console.log(`[DockerService] (Emulation) Launched container: ${options.containerName}`);
       return true;
     }
@@ -93,7 +94,7 @@ export class DockerService {
   }
 
   public static async stopContainer(containerName: string): Promise<boolean> {
-    if (!this.docker || !this.isAvailable) return true;
+    if (!this.docker || !this.isAvailable) return config.demoMode;
     try {
       const container = this.docker.getContainer(containerName);
       await container.stop();
@@ -105,7 +106,7 @@ export class DockerService {
   }
 
   public static async startContainer(containerName: string): Promise<boolean> {
-    if (!this.docker || !this.isAvailable) return true;
+    if (!this.docker || !this.isAvailable) return config.demoMode;
     try {
       const container = this.docker.getContainer(containerName);
       await container.start();
@@ -117,7 +118,7 @@ export class DockerService {
   }
 
   public static async restartContainer(containerName: string): Promise<boolean> {
-    if (!this.docker || !this.isAvailable) return true;
+    if (!this.docker || !this.isAvailable) return config.demoMode;
     try {
       const container = this.docker.getContainer(containerName);
       await container.restart();
@@ -129,7 +130,7 @@ export class DockerService {
   }
 
   public static async removeContainer(containerName: string): Promise<boolean> {
-    if (!this.docker || !this.isAvailable) return true;
+    if (!this.docker || !this.isAvailable) return config.demoMode;
     try {
       const container = this.docker.getContainer(containerName);
       try {

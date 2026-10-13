@@ -13,6 +13,7 @@ exports.config = {
     port: parseInt(process.env.PORT || '3000', 10),
     host: process.env.HOST || '0.0.0.0',
     env: process.env.NODE_ENV || 'development',
+    demoMode: process.env.DEMO_MODE === 'true',
     // Master Dashboard Authentication
     masterAdminUsername: process.env.MASTER_ADMIN_USER || '',
     masterAdminPassword: process.env.MASTER_ADMIN_PASS || '',

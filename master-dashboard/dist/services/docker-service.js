@@ -30,7 +30,7 @@ class DockerService {
     }
     static async checkContainerStatus(containerName) {
         if (!this.docker || !this.isAvailable)
-            return 'running'; // Emulated default
+            return config_1.config.demoMode ? 'running' : 'not_found';
         try {
             const container = this.docker.getContainer(containerName);
             const data = await container.inspect();
@@ -42,6 +42,8 @@ class DockerService {
     }
     static async launchTenantContainer(options) {
         if (!this.docker || !this.isAvailable) {
+            if (!config_1.config.demoMode)
+                return false;
             console.log(`[DockerService] (Emulation) Launched container: ${options.containerName}`);
             return true;
         }
@@ -90,7 +92,7 @@ class DockerService {
     }
     static async stopContainer(containerName) {
         if (!this.docker || !this.isAvailable)
-            return true;
+            return config_1.config.demoMode;
         try {
             const container = this.docker.getContainer(containerName);
             await container.stop();
@@ -103,7 +105,7 @@ class DockerService {
     }
     static async startContainer(containerName) {
         if (!this.docker || !this.isAvailable)
-            return true;
+            return config_1.config.demoMode;
         try {
             const container = this.docker.getContainer(containerName);
             await container.start();
@@ -116,7 +118,7 @@ class DockerService {
     }
     static async restartContainer(containerName) {
         if (!this.docker || !this.isAvailable)
-            return true;
+            return config_1.config.demoMode;
         try {
             const container = this.docker.getContainer(containerName);
             await container.restart();
@@ -129,7 +131,7 @@ class DockerService {
     }
     static async removeContainer(containerName) {
         if (!this.docker || !this.isAvailable)
-            return true;
+            return config_1.config.demoMode;
         try {
             const container = this.docker.getContainer(containerName);
             try {
