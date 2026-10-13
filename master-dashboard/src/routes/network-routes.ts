@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { MasterDb } from '../db/master-db';
 import { DnsService } from '../services/dns-service';
 import { EasypanelService } from '../services/easypanel-service';
+import { validateDomain } from '../validation';
 
 const router = Router();
 
@@ -13,19 +14,34 @@ router.get('/', (req: Request, res: Response) => {
     networks,
     schools,
     dnsResult: null,
+    error: req.query.error || null,
+    success: req.query.success || null,
   });
 });
 
 router.post('/create', (req: Request, res: Response) => {
   const { name, rootDomain, description } = req.body;
-  if (name && rootDomain) {
-    MasterDb.addNetwork({
-      name,
-      rootDomain: rootDomain.toLowerCase().trim(),
-      isDefault: false,
-      description,
-    });
+  if (!name) {
+    return res.redirect('/networks?error=' + encodeURIComponent('Network name is required.'));
   }
+
+  const domainValidation = validateDomain(rootDomain);
+  if (!domainValidation.valid) {
+    return res.redirect('/networks?error=' + encodeURIComponent(domainValidation.error || 'Invalid root domain.'));
+  }
+  const cleanRootDomain = domainValidation.value as string;
+
+  const existing = MasterDb.getNetworks().find((n) => n.rootDomain.toLowerCase() === cleanRootDomain);
+  if (existing) {
+    return res.redirect('/networks?error=' + encodeURIComponent(`Root domain "${cleanRootDomain}" is already registered.`));
+  }
+
+  MasterDb.addNetwork({
+    name: name.trim(),
+    rootDomain: cleanRootDomain,
+    isDefault: false,
+    description: description ? description.trim() : undefined,
+  });
   res.redirect('/networks');
 });
 
@@ -47,14 +63,30 @@ router.post('/verify-domain', async (req: Request, res: Response) => {
 
 router.post('/bind-domain', async (req: Request, res: Response) => {
   const { schoolId, customDomain } = req.body;
-  if (schoolId && customDomain) {
-    const cleanDomain = customDomain.trim().toLowerCase();
-    MasterDb.updateSchool(schoolId, {
-      customDomain: cleanDomain,
-      sslStatus: 'active',
-    });
-    await EasypanelService.registerDomain(cleanDomain);
+
+  const school = MasterDb.getSchoolById(schoolId);
+  if (!school) {
+    return res.redirect('/networks?error=' + encodeURIComponent('Selected school is invalid.'));
   }
+
+  const domainValidation = validateDomain(customDomain);
+  if (!domainValidation.valid) {
+    return res.redirect('/networks?error=' + encodeURIComponent(domainValidation.error || 'Invalid custom domain.'));
+  }
+  const cleanDomain = domainValidation.value as string;
+
+  const existing = MasterDb.getSchools().find(
+    (s) => s.id !== school.id && s.customDomain && s.customDomain.toLowerCase() === cleanDomain
+  );
+  if (existing) {
+    return res.redirect('/networks?error=' + encodeURIComponent(`Domain "${cleanDomain}" is already bound to another school.`));
+  }
+
+  MasterDb.updateSchool(school.id, {
+    customDomain: cleanDomain,
+    sslStatus: 'active',
+  });
+  await EasypanelService.registerDomain(cleanDomain);
   res.redirect('/networks');
 });
 

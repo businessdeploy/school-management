@@ -8,7 +8,18 @@ const docker_service_1 = require("../services/docker-service");
 const sso_service_1 = require("../services/sso-service");
 const easypanel_service_1 = require("../services/easypanel-service");
 const config_1 = require("../config");
+const validation_1 = require("../validation");
 const router = (0, express_1.Router)();
+function renderCreateForm(res, error) {
+    const clients = master_db_1.MasterDb.getClients();
+    const networks = master_db_1.MasterDb.getNetworks();
+    return res.render('school-create', {
+        pageTitle: 'Instant School Onboarding Wizard',
+        clients,
+        networks,
+        error,
+    });
+}
 // 1. List Schools
 router.get('/', async (req, res) => {
     const hostHeader = (req.headers['x-forwarded-host'] || req.headers.host);
@@ -49,33 +60,42 @@ router.get('/new', (req, res) => {
 // 3. Create School (End-to-End Onboarding)
 router.post('/create', async (req, res) => {
     const { name, slug, clientId, networkId, customDomain, adminEmail, adminPassword, currencySymbol, timezone, storageQuotaGb, maxStudents, } = req.body;
-    // Clean slug: lowercase alphanumeric and hyphens only
-    const cleanSlug = (slug || '')
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9-]/g, '');
-    if (!cleanSlug || !name || !adminEmail) {
-        const clients = master_db_1.MasterDb.getClients();
-        const networks = master_db_1.MasterDb.getNetworks();
-        return res.render('school-create', {
-            pageTitle: 'Instant School Onboarding Wizard',
-            clients,
-            networks,
-            error: 'School Name, Subdomain Slug, and Admin Email are required.',
-        });
+    const slugValidation = (0, validation_1.validateSlug)(slug);
+    if (!slugValidation.valid) {
+        return renderCreateForm(res, slugValidation.error || 'Invalid slug.');
+    }
+    const cleanSlug = slugValidation.value;
+    if (!name || !adminEmail) {
+        return renderCreateForm(res, 'School Name and Admin Email are required.');
     }
     // Check uniqueness
     if (master_db_1.MasterDb.getSchoolBySlug(cleanSlug)) {
-        const clients = master_db_1.MasterDb.getClients();
-        const networks = master_db_1.MasterDb.getNetworks();
-        return res.render('school-create', {
-            pageTitle: 'Instant School Onboarding Wizard',
-            clients,
-            networks,
-            error: `Slug "${cleanSlug}" is already taken. Please choose a different subdomain slug.`,
-        });
+        return renderCreateForm(res, `Slug "${cleanSlug}" is already taken. Please choose a different subdomain slug.`);
     }
-    const network = master_db_1.MasterDb.getNetworkById(networkId) || master_db_1.MasterDb.getNetworks()[0];
+    const network = master_db_1.MasterDb.getNetworkById(networkId);
+    if (!network) {
+        return renderCreateForm(res, 'Selected network is invalid.');
+    }
+    const storageQuota = (0, validation_1.validateBoundedInt)(storageQuotaGb, 1, 500);
+    if (!storageQuota.valid) {
+        return renderCreateForm(res, `Storage quota: ${storageQuota.error}`);
+    }
+    const maxStudentsVal = (0, validation_1.validateBoundedInt)(maxStudents, 1, 100000);
+    if (!maxStudentsVal.valid) {
+        return renderCreateForm(res, `Max students: ${maxStudentsVal.error}`);
+    }
+    let cleanCustomDomain;
+    if (customDomain) {
+        const domainValidation = (0, validation_1.validateDomain)(customDomain);
+        if (!domainValidation.valid) {
+            return renderCreateForm(res, domainValidation.error || 'Invalid custom domain.');
+        }
+        cleanCustomDomain = domainValidation.value;
+    }
+    const client = clientId ? master_db_1.MasterDb.getClients().find((c) => c.id === clientId) : master_db_1.MasterDb.getClients()[0];
+    if (!client) {
+        return renderCreateForm(res, 'Selected client is invalid.');
+    }
     const subdomain = `${cleanSlug}.${network.rootDomain}`;
     const dbName = `${config_1.config.fleetDb.databasePrefix}${cleanSlug}`;
     const containerName = `ss_tenant_${cleanSlug}`;
@@ -84,23 +104,23 @@ router.post('/create', async (req, res) => {
         const newSchool = master_db_1.MasterDb.addSchool({
             slug: cleanSlug,
             name,
-            clientId: clientId || 'client_demo',
+            clientId: client.id,
             networkId: network.id,
             subdomain,
-            customDomain: customDomain ? customDomain.trim().toLowerCase() : undefined,
+            customDomain: cleanCustomDomain,
             dbName,
             containerName,
             adminEmail,
             status: 'provisioning',
-            storageQuotaGb: parseInt(storageQuotaGb || '10', 10),
-            maxStudents: parseInt(maxStudents || '1000', 10),
-            sslStatus: customDomain ? 'pending' : 'active',
+            storageQuotaGb: storageQuota.value,
+            maxStudents: maxStudentsVal.value,
+            sslStatus: cleanCustomDomain ? 'pending' : 'active',
         });
         // 2. Provision database and seed schema
         await seed_installer_1.SeedInstaller.provisionTenantDatabase({
             slug: cleanSlug,
             name,
-            domain: customDomain || subdomain,
+            domain: cleanCustomDomain || subdomain,
             adminEmail,
             adminPassword: adminPassword || 'Admin@123456',
             currencySymbol: currencySymbol || '$',
@@ -111,13 +131,13 @@ router.post('/create', async (req, res) => {
             slug: cleanSlug,
             containerName,
             dbName,
-            domain: customDomain || subdomain,
+            domain: cleanCustomDomain || subdomain,
             ramLimitMb: 512,
         });
         // 4. Register Traefik domain in Easypanel for instant live access
         await easypanel_service_1.EasypanelService.registerDomain(subdomain);
-        if (customDomain) {
-            await easypanel_service_1.EasypanelService.registerDomain(customDomain);
+        if (cleanCustomDomain) {
+            await easypanel_service_1.EasypanelService.registerDomain(cleanCustomDomain);
         }
         // 5. Update status to active
         master_db_1.MasterDb.updateSchool(newSchool.id, { status: 'active' });
@@ -248,15 +268,35 @@ router.post('/:id/edit', async (req, res) => {
     if (!school)
         return res.redirect('/schools');
     const { name, adminEmail, customDomain, storageQuotaGb, maxStudents, status } = req.body;
+    const allowedStatuses = ['active', 'suspended', 'stopped'];
+    const nextStatus = status ? String(status) : school.status;
+    if (!allowedStatuses.includes(nextStatus)) {
+        return res.redirect(`/schools/${school.id}?error=Invalid status.`);
+    }
+    const storageQuota = (0, validation_1.validateBoundedInt)(storageQuotaGb, 1, 500);
+    if (!storageQuota.valid) {
+        return res.redirect(`/schools/${school.id}?error=${encodeURIComponent(`Storage quota: ${storageQuota.error}`)}`);
+    }
+    const maxStudentsVal = (0, validation_1.validateBoundedInt)(maxStudents, 1, 100000);
+    if (!maxStudentsVal.valid) {
+        return res.redirect(`/schools/${school.id}?error=${encodeURIComponent(`Max students: ${maxStudentsVal.error}`)}`);
+    }
+    let cleanDomain;
+    if (customDomain) {
+        const domainValidation = (0, validation_1.validateDomain)(customDomain);
+        if (!domainValidation.valid) {
+            return res.redirect(`/schools/${school.id}?error=${encodeURIComponent(domainValidation.error || 'Invalid custom domain.')}`);
+        }
+        cleanDomain = domainValidation.value;
+    }
     try {
-        const cleanDomain = customDomain ? customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '') : undefined;
         master_db_1.MasterDb.updateSchool(school.id, {
             name: name ? name.trim() : school.name,
             adminEmail: adminEmail ? adminEmail.trim() : school.adminEmail,
-            customDomain: cleanDomain || undefined,
-            storageQuotaGb: storageQuotaGb ? parseInt(storageQuotaGb, 10) : school.storageQuotaGb,
-            maxStudents: maxStudents ? parseInt(maxStudents, 10) : school.maxStudents,
-            status: status || school.status,
+            customDomain: cleanDomain,
+            storageQuotaGb: storageQuota.value,
+            maxStudents: maxStudentsVal.value,
+            status: nextStatus,
             sslStatus: cleanDomain ? 'active' : school.sslStatus,
         });
         // Also update tenant sch_settings table
@@ -267,7 +307,7 @@ router.post('/:id/edit', async (req, res) => {
     }
     catch (err) {
         console.error('[School Edit Error]:', err);
-        res.redirect(`/schools/${school.id}?error=Failed to update configuration: ${encodeURIComponent(err.message)}`);
+        res.redirect(`/schools/${school.id}?error=Failed to update configuration.`);
     }
 });
 // 9. Quick Status Toggle
