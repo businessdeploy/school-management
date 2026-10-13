@@ -366,6 +366,10 @@ class MasterRepository {
             id,
         ]);
     }
+    static async markStaleRunningOperationsFailed(beforeIso) {
+        const result = await masterQuery('UPDATE operations SET status = ?, updated_at = ? WHERE status = ? AND updated_at < ?', ['failed', new Date().toISOString(), 'running', beforeIso]);
+        return result?.affectedRows || 0;
+    }
     static async addOperationStep(step) {
         const result = await masterQuery(`INSERT INTO operation_steps (operation_id, step, status, message, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)`, [step.operationId, step.step, step.status, step.message || null, step.createdAt, step.updatedAt]);

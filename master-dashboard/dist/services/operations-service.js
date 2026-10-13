@@ -42,5 +42,13 @@ class OperationsService {
     static async list() {
         return master_repository_1.MasterRepository.listOperations();
     }
+    /**
+     * Marks operations that have been stuck in a running state past the
+     * threshold as failed (crash recovery for interrupted workers).
+     */
+    static async recoverStaleOperations(maxAgeMs = 10 * 60 * 1000) {
+        const before = new Date(Date.now() - maxAgeMs).toISOString();
+        return master_repository_1.MasterRepository.markStaleRunningOperationsFailed(before);
+    }
 }
 exports.OperationsService = OperationsService;

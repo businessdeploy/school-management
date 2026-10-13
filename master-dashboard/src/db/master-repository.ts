@@ -424,6 +424,14 @@ export class MasterRepository {
     ]);
   }
 
+  static async markStaleRunningOperationsFailed(beforeIso: string): Promise<number> {
+    const result: any = await masterQuery(
+      'UPDATE operations SET status = ?, updated_at = ? WHERE status = ? AND updated_at < ?',
+      ['failed', new Date().toISOString(), 'running', beforeIso]
+    );
+    return result?.affectedRows || 0;
+  }
+
   static async addOperationStep(step: Omit<OperationStepRecord, 'id'>): Promise<number> {
     const result: any = await masterQuery(
       `INSERT INTO operation_steps (operation_id, step, status, message, created_at, updated_at)

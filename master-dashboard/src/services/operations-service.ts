@@ -48,4 +48,13 @@ export class OperationsService {
   static async list(): Promise<OperationRecord[]> {
     return MasterRepository.listOperations();
   }
+
+  /**
+   * Marks operations that have been stuck in a running state past the
+   * threshold as failed (crash recovery for interrupted workers).
+   */
+  static async recoverStaleOperations(maxAgeMs = 10 * 60 * 1000): Promise<number> {
+    const before = new Date(Date.now() - maxAgeMs).toISOString();
+    return MasterRepository.markStaleRunningOperationsFailed(before);
+  }
 }

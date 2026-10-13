@@ -8,6 +8,7 @@ import { DbSessionStore } from './db/session-store';
 import { DockerService } from './services/docker-service';
 import { GatewayProxy } from './services/gateway-proxy';
 import { DataAggregator } from './services/data-aggregator';
+import { OperationsService } from './services/operations-service';
 
 import authRoutes, { requireAuth } from './routes/auth-routes';
 import { csrfProtection } from './middleware/csrf';
@@ -145,6 +146,19 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 (async () => {
   try {
     await MasterDb.init();
+    try {
+      const recovered = await OperationsService.recoverStaleOperations();
+      if (recovered > 0) {
+        console.log(`[Reconciliation] Marked ${recovered} stale operation(s) as failed.`);
+      }
+    } catch (err: any) {
+      console.warn('[Reconciliation] Stale operation recovery skipped:', err.message);
+    }
+
+    setInterval(() => {
+      OperationsService.recoverStaleOperations().catch(() => {});
+    }, 5 * 60 * 1000);
+
     app.listen(config.port, config.host, () => {
       console.log(`=======================================================`);
       console.log(`🚀 Smart School Master Control Plane is Online!`);

@@ -46,6 +46,7 @@ const session_store_1 = require("./db/session-store");
 const docker_service_1 = require("./services/docker-service");
 const gateway_proxy_1 = require("./services/gateway-proxy");
 const data_aggregator_1 = require("./services/data-aggregator");
+const operations_service_1 = require("./services/operations-service");
 const auth_routes_1 = __importStar(require("./routes/auth-routes"));
 const csrf_1 = require("./middleware/csrf");
 const permissions_1 = require("./middleware/permissions");
@@ -163,6 +164,18 @@ app.use((err, req, res, next) => {
 (async () => {
     try {
         await master_db_1.MasterDb.init();
+        try {
+            const recovered = await operations_service_1.OperationsService.recoverStaleOperations();
+            if (recovered > 0) {
+                console.log(`[Reconciliation] Marked ${recovered} stale operation(s) as failed.`);
+            }
+        }
+        catch (err) {
+            console.warn('[Reconciliation] Stale operation recovery skipped:', err.message);
+        }
+        setInterval(() => {
+            operations_service_1.OperationsService.recoverStaleOperations().catch(() => { });
+        }, 5 * 60 * 1000);
         app.listen(config_1.config.port, config_1.config.host, () => {
             console.log(`=======================================================`);
             console.log(`🚀 Smart School Master Control Plane is Online!`);
