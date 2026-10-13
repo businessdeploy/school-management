@@ -342,7 +342,7 @@ router.post('/:id/edit', requirePermission(PERMISSIONS.SCHOOLS_EDIT), async (req
       storageQuotaGb: storageQuota.value,
       maxStudents: maxStudentsVal.value,
       status: nextStatus as any,
-      sslStatus: cleanDomain ? 'active' : school.sslStatus,
+      sslStatus: cleanDomain ? 'pending' : school.sslStatus,
     });
 
     // Also update tenant sch_settings table

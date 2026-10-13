@@ -74,7 +74,7 @@ router.post('/bind-domain', (0, permissions_1.requirePermission)(permissions_2.P
     }
     await master_db_1.MasterDb.updateSchool(school.id, {
         customDomain: cleanDomain,
-        sslStatus: 'active',
+        sslStatus: 'pending',
     });
     await easypanel_service_1.EasypanelService.registerDomain(cleanDomain);
     res.redirect('/networks');

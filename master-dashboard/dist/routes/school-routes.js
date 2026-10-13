@@ -295,7 +295,7 @@ router.post('/:id/edit', (0, permissions_1.requirePermission)(permissions_2.PERM
             storageQuotaGb: storageQuota.value,
             maxStudents: maxStudentsVal.value,
             status: nextStatus,
-            sslStatus: cleanDomain ? 'active' : school.sslStatus,
+            sslStatus: cleanDomain ? 'pending' : school.sslStatus,
         });
         // Also update tenant sch_settings table
         if (name || adminEmail) {
