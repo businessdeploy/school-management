@@ -56,6 +56,29 @@ export interface AdminUserRecord {
   updatedAt: string;
 }
 
+export type OperationStatus = 'pending' | 'running' | 'succeeded' | 'failed';
+
+export interface OperationRecord {
+  id: string;
+  type: string;
+  schoolId?: string;
+  idempotencyKey?: string;
+  status: OperationStatus;
+  operator?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OperationStepRecord {
+  id: number;
+  operationId: string;
+  step: string;
+  status: OperationStatus;
+  message?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class MasterDb {
   private static resolveJsonPath(): string {
     if (process.env.MASTER_STORE_PATH) {

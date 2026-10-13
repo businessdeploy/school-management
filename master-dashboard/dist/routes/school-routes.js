@@ -7,6 +7,7 @@ const fleet_db_1 = require("../db/fleet-db");
 const docker_service_1 = require("../services/docker-service");
 const sso_service_1 = require("../services/sso-service");
 const easypanel_service_1 = require("../services/easypanel-service");
+const operations_service_1 = require("../services/operations-service");
 const config_1 = require("../config");
 const validation_1 = require("../validation");
 const permissions_1 = require("../middleware/permissions");
@@ -112,36 +113,50 @@ router.post('/create', (0, permissions_1.requirePermission)(permissions_2.PERMIS
             maxStudents: maxStudentsVal.value,
             sslStatus: cleanCustomDomain ? 'pending' : 'active',
         });
-        // 2. Provision database and seed schema
-        await seed_installer_1.SeedInstaller.provisionTenantDatabase({
-            slug: cleanSlug,
-            name,
-            domain: cleanCustomDomain || subdomain,
-            adminEmail,
-            adminPassword: adminPassword || 'Admin@123456',
-            currencySymbol: currencySymbol || '$',
-            timezone: timezone || 'UTC',
-        });
-        // 3. Launch isolated container
-        const launched = await docker_service_1.DockerService.launchTenantContainer({
-            slug: cleanSlug,
-            containerName,
-            dbName,
-            domain: cleanCustomDomain || subdomain,
-            ramLimitMb: 512,
-        });
-        if (!launched) {
-            await master_db_1.MasterDb.updateSchool(newSchool.id, { status: 'stopped' });
-            throw new Error('Failed to launch tenant container.');
+        const operator = req.session?.user?.username;
+        const operationId = await operations_service_1.OperationsService.start('school.provision', newSchool.id, `school.provision.${cleanSlug}`, operator);
+        try {
+            // 2. Provision database and seed schema
+            await operations_service_1.OperationsService.runStep(operationId, 'provision_database', async () => {
+                await seed_installer_1.SeedInstaller.provisionTenantDatabase({
+                    slug: cleanSlug,
+                    name,
+                    domain: cleanCustomDomain || subdomain,
+                    adminEmail,
+                    adminPassword: adminPassword || 'Admin@123456',
+                    currencySymbol: currencySymbol || '$',
+                    timezone: timezone || 'UTC',
+                });
+            });
+            // 3. Launch isolated container
+            await operations_service_1.OperationsService.runStep(operationId, 'launch_container', async () => {
+                const launched = await docker_service_1.DockerService.launchTenantContainer({
+                    slug: cleanSlug,
+                    containerName,
+                    dbName,
+                    domain: cleanCustomDomain || subdomain,
+                    ramLimitMb: 512,
+                });
+                if (!launched)
+                    throw new Error('Failed to launch tenant container.');
+            });
+            // 4. Register Traefik domain in Easypanel (optional)
+            await operations_service_1.OperationsService.runStep(operationId, 'register_domains', async () => {
+                await easypanel_service_1.EasypanelService.registerDomain(subdomain);
+                if (cleanCustomDomain) {
+                    await easypanel_service_1.EasypanelService.registerDomain(cleanCustomDomain);
+                }
+            });
+            // 5. Update status to active
+            await master_db_1.MasterDb.updateSchool(newSchool.id, { status: 'active' });
+            await operations_service_1.OperationsService.finish(operationId, 'succeeded');
+            res.redirect(`/schools/${newSchool.id}`);
         }
-        // 4. Register Traefik domain in Easypanel for instant live access (optional)
-        await easypanel_service_1.EasypanelService.registerDomain(subdomain);
-        if (cleanCustomDomain) {
-            await easypanel_service_1.EasypanelService.registerDomain(cleanCustomDomain);
+        catch (err) {
+            await master_db_1.MasterDb.updateSchool(newSchool.id, { status: 'stopped' }).catch(() => { });
+            await operations_service_1.OperationsService.finish(operationId, 'failed').catch(() => { });
+            throw err;
         }
-        // 5. Update status to active
-        await master_db_1.MasterDb.updateSchool(newSchool.id, { status: 'active' });
-        res.redirect(`/schools/${newSchool.id}`);
     }
     catch (err) {
         console.error('[Onboarding Error]:', err);

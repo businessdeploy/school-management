@@ -1,6 +1,14 @@
 import { config } from '../config';
 import { FleetDb } from './fleet-db';
-import type { NetworkRecord, ClientRecord, SchoolRecord, AdminUserRecord } from './master-db';
+import type {
+  NetworkRecord,
+  ClientRecord,
+  SchoolRecord,
+  AdminUserRecord,
+  OperationRecord,
+  OperationStepRecord,
+  OperationStatus,
+} from './master-db';
 
 const MASTER_SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS master_migrations (
@@ -67,6 +75,28 @@ const MASTER_SCHEMA_STATEMENTS = [
     session_data TEXT NOT NULL,
     expires_at BIGINT NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS operations (
+    id VARCHAR(64) PRIMARY KEY,
+    type VARCHAR(64) NOT NULL,
+    school_id VARCHAR(64) NULL,
+    idempotency_key VARCHAR(191) NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'pending',
+    operator VARCHAR(191) NULL,
+    created_at VARCHAR(64) NOT NULL,
+    updated_at VARCHAR(64) NOT NULL,
+    UNIQUE KEY uq_operations_idempotency_key (idempotency_key)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS operation_steps (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    operation_id VARCHAR(64) NOT NULL,
+    step VARCHAR(64) NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'pending',
+    message TEXT NULL,
+    created_at VARCHAR(64) NOT NULL,
+    updated_at VARCHAR(64) NOT NULL,
+    KEY idx_operation_steps_operation_id (operation_id),
+    CONSTRAINT fk_operation_steps_operation FOREIGN KEY (operation_id) REFERENCES operations(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 
 function mapNetworkRow(row: any): NetworkRecord {
@@ -123,6 +153,31 @@ function mapAdminUserRow(row: any): AdminUserRecord {
     role: row.role,
     isActive: !!row.is_active,
     mfaSecret: row.mfa_secret || undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapOperationRow(row: any): OperationRecord {
+  return {
+    id: row.id,
+    type: row.type,
+    schoolId: row.school_id || undefined,
+    idempotencyKey: row.idempotency_key || undefined,
+    status: row.status as OperationStatus,
+    operator: row.operator || undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapOperationStepRow(row: any): OperationStepRecord {
+  return {
+    id: row.id,
+    operationId: row.operation_id,
+    step: row.step,
+    status: row.status as OperationStatus,
+    message: row.message || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -335,6 +390,56 @@ export class MasterRepository {
       id,
     ]);
     return result?.affectedRows === 1;
+  }
+
+  // ---- Operations ----
+  static async createOperation(op: OperationRecord): Promise<void> {
+    await masterQuery(
+      `INSERT INTO operations (id, type, school_id, idempotency_key, status, operator, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [op.id, op.type, op.schoolId || null, op.idempotencyKey || null, op.status, op.operator || null, op.createdAt, op.updatedAt]
+    );
+  }
+
+  static async getOperationById(id: string): Promise<OperationRecord | undefined> {
+    const rows: any[] = await masterQuery('SELECT * FROM operations WHERE id = ? LIMIT 1', [id]);
+    return rows[0] ? mapOperationRow(rows[0]) : undefined;
+  }
+
+  static async getOperationByKey(idempotencyKey: string): Promise<OperationRecord | undefined> {
+    const rows: any[] = await masterQuery('SELECT * FROM operations WHERE idempotency_key = ? LIMIT 1', [idempotencyKey]);
+    return rows[0] ? mapOperationRow(rows[0]) : undefined;
+  }
+
+  static async listOperations(): Promise<OperationRecord[]> {
+    const rows: any[] = await masterQuery('SELECT * FROM operations ORDER BY created_at DESC');
+    return rows.map(mapOperationRow);
+  }
+
+  static async updateOperationStatus(id: string, status: OperationStatus): Promise<void> {
+    await masterQuery('UPDATE operations SET status = ?, updated_at = ? WHERE id = ?', [
+      status,
+      new Date().toISOString(),
+      id,
+    ]);
+  }
+
+  static async addOperationStep(step: Omit<OperationStepRecord, 'id'>): Promise<number> {
+    const result: any = await masterQuery(
+      `INSERT INTO operation_steps (operation_id, step, status, message, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [step.operationId, step.step, step.status, step.message || null, step.createdAt, step.updatedAt]
+    );
+    return result?.insertId || 0;
+  }
+
+  static async updateOperationStep(id: number, status: OperationStatus, message?: string): Promise<void> {
+    await masterQuery('UPDATE operation_steps SET status = ?, message = ?, updated_at = ? WHERE id = ?', [
+      status,
+      message || null,
+      new Date().toISOString(),
+      id,
+    ]);
   }
 
   static async createAdminUser(user: AdminUserRecord): Promise<void> {

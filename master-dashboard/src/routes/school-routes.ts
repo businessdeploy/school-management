@@ -5,6 +5,7 @@ import { FleetDb } from '../db/fleet-db';
 import { DockerService } from '../services/docker-service';
 import { SsoService } from '../services/sso-service';
 import { EasypanelService } from '../services/easypanel-service';
+import { OperationsService } from '../services/operations-service';
 import { config } from '../config';
 import { validateSlug, validateDomain, validateBoundedInt } from '../validation';
 import { requirePermission } from '../middleware/permissions';
@@ -142,41 +143,58 @@ router.post('/create', requirePermission(PERMISSIONS.SCHOOLS_CREATE), async (req
       sslStatus: cleanCustomDomain ? 'pending' : 'active',
     });
 
-    // 2. Provision database and seed schema
-    await SeedInstaller.provisionTenantDatabase({
-      slug: cleanSlug,
-      name,
-      domain: cleanCustomDomain || subdomain,
-      adminEmail,
-      adminPassword: adminPassword || 'Admin@123456',
-      currencySymbol: currencySymbol || '$',
-      timezone: timezone || 'UTC',
-    });
+    const operator = (req.session as any)?.user?.username;
+    const operationId = await OperationsService.start(
+      'school.provision',
+      newSchool.id,
+      `school.provision.${cleanSlug}`,
+      operator
+    );
 
-    // 3. Launch isolated container
-    const launched = await DockerService.launchTenantContainer({
-       slug: cleanSlug,
-       containerName,
-       dbName,
-       domain: cleanCustomDomain || subdomain,
-       ramLimitMb: 512,
-     });
+    try {
+      // 2. Provision database and seed schema
+      await OperationsService.runStep(operationId, 'provision_database', async () => {
+        await SeedInstaller.provisionTenantDatabase({
+          slug: cleanSlug,
+          name,
+          domain: cleanCustomDomain || subdomain,
+          adminEmail,
+          adminPassword: adminPassword || 'Admin@123456',
+          currencySymbol: currencySymbol || '$',
+          timezone: timezone || 'UTC',
+        });
+      });
 
-    if (!launched) {
-      await MasterDb.updateSchool(newSchool.id, { status: 'stopped' });
-      throw new Error('Failed to launch tenant container.');
+      // 3. Launch isolated container
+      await OperationsService.runStep(operationId, 'launch_container', async () => {
+        const launched = await DockerService.launchTenantContainer({
+           slug: cleanSlug,
+           containerName,
+           dbName,
+           domain: cleanCustomDomain || subdomain,
+           ramLimitMb: 512,
+         });
+        if (!launched) throw new Error('Failed to launch tenant container.');
+      });
+
+      // 4. Register Traefik domain in Easypanel (optional)
+      await OperationsService.runStep(operationId, 'register_domains', async () => {
+        await EasypanelService.registerDomain(subdomain);
+        if (cleanCustomDomain) {
+          await EasypanelService.registerDomain(cleanCustomDomain);
+        }
+      });
+
+      // 5. Update status to active
+      await MasterDb.updateSchool(newSchool.id, { status: 'active' });
+      await OperationsService.finish(operationId, 'succeeded');
+
+      res.redirect(`/schools/${newSchool.id}`);
+    } catch (err: any) {
+      await MasterDb.updateSchool(newSchool.id, { status: 'stopped' }).catch(() => {});
+      await OperationsService.finish(operationId, 'failed').catch(() => {});
+      throw err;
     }
-
-    // 4. Register Traefik domain in Easypanel for instant live access (optional)
-    await EasypanelService.registerDomain(subdomain);
-    if (cleanCustomDomain) {
-      await EasypanelService.registerDomain(cleanCustomDomain);
-    }
-
-    // 5. Update status to active
-    await MasterDb.updateSchool(newSchool.id, { status: 'active' });
-
-    res.redirect(`/schools/${newSchool.id}`);
   } catch (err: any) {
     console.error('[Onboarding Error]:', err);
     res.redirect('/schools?error=' + encodeURIComponent(err.message));
