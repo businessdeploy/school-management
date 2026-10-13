@@ -91,6 +91,19 @@ const MASTER_SCHEMA_STATEMENTS = [
     KEY idx_operation_steps_operation_id (operation_id),
     CONSTRAINT fk_operation_steps_operation FOREIGN KEY (operation_id) REFERENCES operations(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+    `CREATE TABLE IF NOT EXISTS magic_links (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    email VARCHAR(191) NOT NULL,
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at BIGINT NOT NULL,
+    used TINYINT(1) NOT NULL DEFAULT 0,
+    created_at VARCHAR(64) NOT NULL,
+    used_at VARCHAR(64) NULL,
+    ip_address VARCHAR(64) NULL,
+    KEY idx_magic_links_token_hash (token_hash),
+    KEY idx_magic_links_email (email)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 function mapNetworkRow(row) {
     return {
@@ -168,6 +181,19 @@ function mapOperationStepRow(row) {
         message: row.message || undefined,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+    };
+}
+function mapMagicLinkRow(row) {
+    return {
+        id: row.id,
+        userId: row.user_id,
+        email: row.email,
+        tokenHash: row.token_hash,
+        expiresAt: Number(row.expires_at),
+        used: !!row.used,
+        createdAt: row.created_at,
+        usedAt: row.used_at || undefined,
+        ipAddress: row.ip_address || undefined,
     };
 }
 async function masterQuery(sql, params = []) {
@@ -448,6 +474,34 @@ class MasterRepository {
         finally {
             conn.release();
         }
+    }
+    // ---- Magic Links ----
+    static async createMagicLink(record) {
+        await masterQuery(`INSERT INTO magic_links (id, user_id, email, token_hash, expires_at, used, created_at, used_at, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+            record.id,
+            record.userId,
+            record.email,
+            record.tokenHash,
+            record.expiresAt,
+            record.used ? 1 : 0,
+            record.createdAt,
+            record.usedAt || null,
+            record.ipAddress || null,
+        ]);
+    }
+    static async getMagicLinkByHash(tokenHash) {
+        const rows = await masterQuery('SELECT * FROM magic_links WHERE token_hash = ? AND used = 0 AND expires_at > ? LIMIT 1', [tokenHash, Date.now()]);
+        return rows[0] ? mapMagicLinkRow(rows[0]) : undefined;
+    }
+    static async markMagicLinkUsed(id, ipAddress) {
+        await masterQuery('UPDATE magic_links SET used = 1, used_at = ?, ip_address = ? WHERE id = ?', [new Date().toISOString(), ipAddress || null, id]);
+    }
+    static async cleanupExpiredMagicLinks() {
+        await masterQuery('DELETE FROM magic_links WHERE expires_at < ? OR (used = 1 AND created_at < ?)', [
+            Date.now() - 24 * 60 * 60 * 1000,
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        ]);
     }
 }
 exports.MasterRepository = MasterRepository;

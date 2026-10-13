@@ -7,9 +7,13 @@
   <link rel="icon" type="image/png" href="/favicon.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    [x-cloak] { display: none !important; }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-6 antialiased">
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-6 antialiased" x-data="{ tab: '<%= (typeof activeTab !== 'undefined' && activeTab === 'magic') ? 'magic' : 'password' %>' }">
   <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
     <div class="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl"></div>
     <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl"></div>
@@ -21,28 +25,80 @@
       <h1 class="text-2xl font-extrabold tracking-tight text-white mb-1">Prime School Fleet Control</h1>
       <p class="text-slate-400 text-sm mb-6">Primeskill Solutions Private Limited Multi-School Cloud.</p>
 
-      <% if (error) { %>
+      <!-- Tab Switcher -->
+      <div class="flex p-1 mb-6 bg-slate-950/60 border border-slate-800 rounded-2xl">
+        <button type="button" @click="tab = 'password'" :class="tab === 'password' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'" class="flex-1 py-2 text-xs font-semibold rounded-xl transition">
+          🔑 Password Login
+        </button>
+        <button type="button" @click="tab = 'magic'" :class="tab === 'magic' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'" class="flex-1 py-2 text-xs font-semibold rounded-xl transition">
+          ✉️ Email Magic Link
+        </button>
+      </div>
+
+      <% if (typeof error !== 'undefined' && error) { %>
         <div class="p-4 mb-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium flex items-center space-x-2">
           <span>⚠️</span>
           <span><%= error %></span>
         </div>
       <% } %>
 
-      <form action="/auth/login" method="POST" class="space-y-4">
+      <% if (typeof success !== 'undefined' && success) { %>
+        <div class="p-4 mb-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center space-x-2">
+          <span>✅</span>
+          <span><%= success %></span>
+        </div>
+      <% } %>
+
+      <% if (typeof magicLinkUrl !== 'undefined' && magicLinkUrl) { %>
+        <div class="p-5 mb-6 rounded-2xl bg-indigo-950/60 border border-indigo-500/30 text-indigo-200 text-xs">
+          <div class="flex items-center space-x-2 font-semibold text-indigo-300 mb-2">
+            <span>🚀</span>
+            <span>Direct Sign-In Link Ready</span>
+          </div>
+          <p class="text-slate-300 text-xs mb-3">You can click below to authenticate directly into Master Dashboard:</p>
+          <a href="<%= magicLinkUrl %>" class="inline-flex items-center justify-center w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-md transition mb-3">
+            👉 Click to Complete Sign-In
+          </a>
+          <div class="text-[11px] text-slate-400 break-all font-mono bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+            <%= magicLinkUrl %>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- 1. Password Login Form -->
+      <form x-show="tab === 'password'" action="/auth/login" method="POST" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Master Username</label>
-          <input type="text" name="username" required autocomplete="username" class="w-full px-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Master Username / Email</label>
+          <input type="text" name="username" required autocomplete="username" placeholder="e.g. superadmin or nitin@businessdeploy.com" class="w-full px-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Security Password</label>
-          <input type="password" name="password" required autocomplete="current-password" class="w-full px-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
+          <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••••••" class="w-full px-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
         </div>
 
         <button type="submit" class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-600/25 transition mt-2">
           Authenticate & Access Fleet
         </button>
       </form>
+
+      <!-- 2. Email Magic Link Form -->
+      <form x-show="tab === 'magic'" x-cloak action="/auth/magic-link" method="POST" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Master Administrator Email</label>
+          <input type="email" name="email" required autocomplete="email" placeholder="nitin@businessdeploy.com" class="w-full px-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
+          <p class="text-xs text-slate-400 mt-2">We will send a single-use secure sign-in link directly to your inbox.</p>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-600/25 transition mt-2 flex items-center justify-center space-x-2">
+          <span>✉️</span>
+          <span>Send Magic Sign-In Link</span>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-6 border-t border-slate-800/60 text-center">
+        <p class="text-xs text-slate-500">Secured Control Plane &bull; Multi-Tenant Fleet Orchestrator</p>
+      </div>
     </div>
   </div>
 </body>

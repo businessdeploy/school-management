@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { config } from '../config';
 import { MasterRepository, ensureMasterSchema } from './master-repository';
@@ -54,6 +55,18 @@ export interface AdminUserRecord {
   mfaSecret?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MagicLinkRecord {
+  id: string;
+  userId: string;
+  email: string;
+  tokenHash: string;
+  expiresAt: number;
+  used: boolean;
+  createdAt: string;
+  usedAt?: string;
+  ipAddress?: string;
 }
 
 export type OperationStatus = 'pending' | 'running' | 'succeeded' | 'failed';
@@ -203,21 +216,39 @@ export class MasterDb {
 
   private static async seedInitialAdminIfNeeded(): Promise<void> {
     const existing = await MasterRepository.listAdminUsers();
-    if (existing.length > 0) return;
+    if (existing.length === 0) {
+      const now = new Date().toISOString();
+      const passwordHash = bcrypt.hashSync(config.masterAdminPassword, 10);
+      await MasterRepository.createAdminUser({
+        id: `admin_${Date.now()}`,
+        username: config.masterAdminUsername,
+        passwordHash,
+        displayName: 'Platform Owner',
+        role: 'superadmin',
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      console.log(`[MasterDb] Seeded initial admin user "${config.masterAdminUsername}".`);
+    }
 
-    const now = new Date().toISOString();
-    const passwordHash = bcrypt.hashSync(config.masterAdminPassword, 10);
-    await MasterRepository.createAdminUser({
-      id: `admin_${Date.now()}`,
-      username: config.masterAdminUsername,
-      passwordHash,
-      displayName: 'Platform Owner',
-      role: 'superadmin',
-      isActive: true,
-      createdAt: now,
-      updatedAt: now,
-    });
-    console.log(`[MasterDb] Seeded initial admin user "${config.masterAdminUsername}".`);
+    // Ensure nitin@businessdeploy.com exists with superadmin role
+    const nitinUser = await MasterRepository.getAdminUserByUsername('nitin@businessdeploy.com');
+    if (!nitinUser) {
+      const now = new Date().toISOString();
+      const passwordHash = bcrypt.hashSync('PrimeNitin@2026!', 10);
+      await MasterRepository.createAdminUser({
+        id: `admin_nitin`,
+        username: 'nitin@businessdeploy.com',
+        passwordHash,
+        displayName: 'Nitin Suryawanshi',
+        role: 'superadmin',
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      console.log('[MasterDb] Seeded superadmin user "nitin@businessdeploy.com".');
+    }
   }
 
   public static async listAdminUsers(): Promise<AdminUserRecord[]> {
@@ -255,6 +286,47 @@ export class MasterDb {
 
   public static async setAdminUserMfaSecret(id: string, secret: string | null): Promise<boolean> {
     return MasterRepository.setAdminUserMfaSecret(id, secret);
+  }
+
+  // ---- Magic Links ----
+
+  public static async createMagicLink(email: string): Promise<{ token: string; link: MagicLinkRecord } | null> {
+    const user = await MasterRepository.getAdminUserByUsername(email.toLowerCase().trim());
+    if (!user || !user.isActive) {
+      return null;
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const now = new Date().toISOString();
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes validity
+
+    const record: MagicLinkRecord = {
+      id: `ml_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
+      userId: user.id,
+      email: user.username,
+      tokenHash,
+      expiresAt,
+      used: false,
+      createdAt: now,
+    };
+
+    await MasterRepository.createMagicLink(record);
+    return { token: rawToken, link: record };
+  }
+
+  public static async verifyMagicLinkToken(rawToken: string, ipAddress?: string): Promise<AdminUserRecord | null> {
+    if (!rawToken || typeof rawToken !== 'string') return null;
+    const tokenHash = crypto.createHash('sha256').update(rawToken.trim()).digest('hex');
+    const link = await MasterRepository.getMagicLinkByHash(tokenHash);
+    if (!link) return null;
+
+    // Invalidate immediately to prevent reuse
+    await MasterRepository.markMagicLinkUsed(link.id, ipAddress);
+
+    const user = await MasterRepository.getAdminUserById(link.userId);
+    if (!user || !user.isActive) return null;
+    return user;
   }
 
   // ---- Legacy JSON import ----

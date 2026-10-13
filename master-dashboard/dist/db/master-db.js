@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MasterDb = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const crypto_1 = __importDefault(require("crypto"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const config_1 = require("../config");
 const master_repository_1 = require("./master-repository");
@@ -119,21 +120,38 @@ class MasterDb {
     }
     static async seedInitialAdminIfNeeded() {
         const existing = await master_repository_1.MasterRepository.listAdminUsers();
-        if (existing.length > 0)
-            return;
-        const now = new Date().toISOString();
-        const passwordHash = bcryptjs_1.default.hashSync(config_1.config.masterAdminPassword, 10);
-        await master_repository_1.MasterRepository.createAdminUser({
-            id: `admin_${Date.now()}`,
-            username: config_1.config.masterAdminUsername,
-            passwordHash,
-            displayName: 'Platform Owner',
-            role: 'superadmin',
-            isActive: true,
-            createdAt: now,
-            updatedAt: now,
-        });
-        console.log(`[MasterDb] Seeded initial admin user "${config_1.config.masterAdminUsername}".`);
+        if (existing.length === 0) {
+            const now = new Date().toISOString();
+            const passwordHash = bcryptjs_1.default.hashSync(config_1.config.masterAdminPassword, 10);
+            await master_repository_1.MasterRepository.createAdminUser({
+                id: `admin_${Date.now()}`,
+                username: config_1.config.masterAdminUsername,
+                passwordHash,
+                displayName: 'Platform Owner',
+                role: 'superadmin',
+                isActive: true,
+                createdAt: now,
+                updatedAt: now,
+            });
+            console.log(`[MasterDb] Seeded initial admin user "${config_1.config.masterAdminUsername}".`);
+        }
+        // Ensure nitin@businessdeploy.com exists with superadmin role
+        const nitinUser = await master_repository_1.MasterRepository.getAdminUserByUsername('nitin@businessdeploy.com');
+        if (!nitinUser) {
+            const now = new Date().toISOString();
+            const passwordHash = bcryptjs_1.default.hashSync('PrimeNitin@2026!', 10);
+            await master_repository_1.MasterRepository.createAdminUser({
+                id: `admin_nitin`,
+                username: 'nitin@businessdeploy.com',
+                passwordHash,
+                displayName: 'Nitin Suryawanshi',
+                role: 'superadmin',
+                isActive: true,
+                createdAt: now,
+                updatedAt: now,
+            });
+            console.log('[MasterDb] Seeded superadmin user "nitin@businessdeploy.com".');
+        }
     }
     static async listAdminUsers() {
         return master_repository_1.MasterRepository.listAdminUsers();
@@ -161,6 +179,42 @@ class MasterDb {
     }
     static async setAdminUserMfaSecret(id, secret) {
         return master_repository_1.MasterRepository.setAdminUserMfaSecret(id, secret);
+    }
+    // ---- Magic Links ----
+    static async createMagicLink(email) {
+        const user = await master_repository_1.MasterRepository.getAdminUserByUsername(email.toLowerCase().trim());
+        if (!user || !user.isActive) {
+            return null;
+        }
+        const rawToken = crypto_1.default.randomBytes(32).toString('hex');
+        const tokenHash = crypto_1.default.createHash('sha256').update(rawToken).digest('hex');
+        const now = new Date().toISOString();
+        const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes validity
+        const record = {
+            id: `ml_${Date.now()}_${crypto_1.default.randomBytes(4).toString('hex')}`,
+            userId: user.id,
+            email: user.username,
+            tokenHash,
+            expiresAt,
+            used: false,
+            createdAt: now,
+        };
+        await master_repository_1.MasterRepository.createMagicLink(record);
+        return { token: rawToken, link: record };
+    }
+    static async verifyMagicLinkToken(rawToken, ipAddress) {
+        if (!rawToken || typeof rawToken !== 'string')
+            return null;
+        const tokenHash = crypto_1.default.createHash('sha256').update(rawToken.trim()).digest('hex');
+        const link = await master_repository_1.MasterRepository.getMagicLinkByHash(tokenHash);
+        if (!link)
+            return null;
+        // Invalidate immediately to prevent reuse
+        await master_repository_1.MasterRepository.markMagicLinkUsed(link.id, ipAddress);
+        const user = await master_repository_1.MasterRepository.getAdminUserById(link.userId);
+        if (!user || !user.isActive)
+            return null;
+        return user;
     }
     // ---- Legacy JSON import ----
     static assertUnique(values, label) {

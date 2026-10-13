@@ -4,6 +4,8 @@ exports.requireAuth = requireAuth;
 const express_1 = require("express");
 const master_db_1 = require("../db/master-db");
 const totp_1 = require("../services/totp");
+const mail_service_1 = require("../services/mail-service");
+const config_1 = require("../config");
 const router = (0, express_1.Router)();
 const MAX_FAILED_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
@@ -64,13 +66,21 @@ router.get('/login', (req, res) => {
     if (req.session?.isAuthenticated) {
         return res.redirect('/');
     }
-    res.render('login', { error: null });
+    res.render('login', {
+        error: req.query.error || null,
+        success: req.query.success || null,
+        magicLinkUrl: null,
+        activeTab: req.query.tab === 'magic' ? 'magic' : 'password',
+    });
 });
 router.post('/login', async (req, res) => {
     const key = throttleKey(req);
     if (isBlocked(key)) {
         return res.status(429).render('login', {
             error: 'Too many failed login attempts. Please try again later.',
+            success: null,
+            magicLinkUrl: null,
+            activeTab: 'password',
         });
     }
     const { username, password } = req.body;
@@ -85,7 +95,86 @@ router.post('/login', async (req, res) => {
         return;
     }
     recordFailure(key);
-    return res.render('login', { error: 'Invalid master credentials. Please try again.' });
+    return res.render('login', {
+        error: 'Invalid master credentials. Please try again.',
+        success: null,
+        magicLinkUrl: null,
+        activeTab: 'password',
+    });
+});
+router.post('/magic-link', async (req, res) => {
+    const rawEmail = (req.body?.email || '').toString().toLowerCase().trim();
+    if (!rawEmail || !rawEmail.includes('@')) {
+        return res.render('login', {
+            error: 'Please enter a valid administrator email address.',
+            success: null,
+            magicLinkUrl: null,
+            activeTab: 'magic',
+        });
+    }
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const key = `magic|${ip}|${rawEmail}`;
+    if (isBlocked(key)) {
+        return res.status(429).render('login', {
+            error: 'Too many requests. Please wait a few minutes before requesting another link.',
+            success: null,
+            magicLinkUrl: null,
+            activeTab: 'magic',
+        });
+    }
+    const created = await master_db_1.MasterDb.createMagicLink(rawEmail);
+    if (!created) {
+        recordFailure(key);
+        return res.render('login', {
+            error: `No active master administrator account found for "${rawEmail}".`,
+            success: null,
+            magicLinkUrl: null,
+            activeTab: 'magic',
+        });
+    }
+    clearFailures(key);
+    const proto = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+    const host = req.headers['x-forwarded-host'] || req.headers.host || config_1.config.masterDomain;
+    const magicLink = `${proto}://${host}/auth/magic-login?token=${created.token}`;
+    const mailResult = await mail_service_1.MailService.sendMagicLoginEmail({
+        to: rawEmail,
+        username: created.link.email,
+        magicLink,
+    });
+    return res.render('login', {
+        error: null,
+        success: mailResult.sent
+            ? `A secure sign-in link has been sent to ${rawEmail}. Please check your mailbox!`
+            : `A magic sign-in link has been generated for ${rawEmail}.`,
+        magicLinkUrl: mailResult.sent ? null : magicLink,
+        activeTab: 'magic',
+    });
+});
+router.get('/magic-login', async (req, res) => {
+    const token = (req.query.token || '').trim();
+    if (!token) {
+        return res.render('login', {
+            error: 'Missing sign-in token.',
+            success: null,
+            magicLinkUrl: null,
+            activeTab: 'magic',
+        });
+    }
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const user = await master_db_1.MasterDb.verifyMagicLinkToken(token, ip);
+    if (!user) {
+        return res.render('login', {
+            error: 'This magic sign-in link has expired or has already been used. Please request a new one.',
+            success: null,
+            magicLinkUrl: null,
+            activeTab: 'magic',
+        });
+    }
+    if (user.mfaSecret) {
+        req.session.pendingMfaUser = { username: user.username, role: user.role };
+        return res.redirect('/auth/mfa');
+    }
+    completeLogin(req, res, user.username, user.role);
 });
 router.get('/mfa', (req, res) => {
     if (req.session?.isAuthenticated) {

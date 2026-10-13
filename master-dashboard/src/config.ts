@@ -45,6 +45,16 @@ export const config = {
   // Base Docker Image Name for School Tenants
   tenantDockerImage: process.env.TENANT_DOCKER_IMAGE || 'smartschool-base:latest',
   dockerNetwork: process.env.DOCKER_NETWORK || 'smartschool_network',
+
+  // SMTP Email Configuration for Magic Links & Notifications
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || 'Prime School Fleet Control <no-reply@businessdeploy.com>',
+  },
 };
 
 /**

@@ -16,7 +16,8 @@
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "http-proxy": "^1.18.1",
-    "mysql2": "^3.9.7"
+    "mysql2": "^3.9.7",
+    "nodemailer": "^10.1.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -26,6 +27,7 @@
     "@types/express-session": "^1.18.0",
     "@types/http-proxy": "^1.17.14",
     "@types/node": "^20.12.7",
+    "@types/nodemailer": "^8.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }
