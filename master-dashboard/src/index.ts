@@ -4,6 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { config, validateConfig } from './config';
 import { MasterDb } from './db/master-db';
+import { DbSessionStore } from './db/session-store';
 import { DockerService } from './services/docker-service';
 import { GatewayProxy } from './services/gateway-proxy';
 import { DataAggregator } from './services/data-aggregator';
@@ -50,6 +51,7 @@ app.use(
     secret: config.sessionSecret,
     resave: false,
     saveUninitialized: false,
+    store: new DbSessionStore(),
     cookie: {
       httpOnly: true,
       sameSite: 'lax',

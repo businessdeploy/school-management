@@ -63,6 +63,11 @@ const MASTER_SCHEMA_STATEMENTS = [
     updated_at VARCHAR(64) NOT NULL,
     UNIQUE KEY uq_admin_users_username (username)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+    `CREATE TABLE IF NOT EXISTS sessions (
+    sid VARCHAR(255) PRIMARY KEY,
+    session_data TEXT NOT NULL,
+    expires_at BIGINT NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 function mapNetworkRow(row) {
     return {

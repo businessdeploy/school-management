@@ -42,6 +42,7 @@ const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
 const config_1 = require("./config");
 const master_db_1 = require("./db/master-db");
+const session_store_1 = require("./db/session-store");
 const docker_service_1 = require("./services/docker-service");
 const gateway_proxy_1 = require("./services/gateway-proxy");
 const data_aggregator_1 = require("./services/data-aggregator");
@@ -77,6 +78,7 @@ app.use((0, express_session_1.default)({
     secret: config_1.config.sessionSecret,
     resave: false,
     saveUninitialized: false,
+    store: new session_store_1.DbSessionStore(),
     cookie: {
         httpOnly: true,
         sameSite: 'lax',
