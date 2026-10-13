@@ -367,44 +367,53 @@ router.post('/:id/set-status', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE),
   if (!school) return res.redirect('/schools');
 
   const { status } = req.body;
-  if (['active', 'suspended', 'stopped'].includes(status)) {
-    await MasterDb.updateSchool(school.id, { status });
-    if (status === 'active') {
-      await DockerService.startContainer(school.containerName);
-    } else if (status === 'stopped') {
-      await DockerService.stopContainer(school.containerName);
-    }
-    res.redirect(`/schools/${school.id}?success=School status set to ${status}.`);
-  } else {
-    res.redirect(`/schools/${school.id}?error=Invalid status.`);
+  if (!['active', 'suspended', 'stopped'].includes(status)) {
+    return res.redirect(`/schools/${school.id}?error=Invalid status.`);
   }
+
+  if (status === 'active') {
+    const ok = await DockerService.startContainer(school.containerName);
+    if (!ok) return res.redirect(`/schools/${school.id}?error=Container failed to start.`);
+  } else if (status === 'stopped') {
+    const ok = await DockerService.stopContainer(school.containerName);
+    if (!ok) return res.redirect(`/schools/${school.id}?error=Container failed to stop.`);
+  }
+
+  await MasterDb.updateSchool(school.id, { status });
+  res.redirect(`/schools/${school.id}?success=School status set to ${status}.`);
 });
 
 // 10. Lifecycle Actions
 router.post('/:id/start', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
-  if (school) {
-    await DockerService.startContainer(school.containerName);
-    await MasterDb.updateSchool(school.id, { status: 'active' });
-  }
-  res.redirect(`/schools/${req.params.id}?success=Container started successfully.`);
+  if (!school) return res.redirect('/schools');
+
+  const ok = await DockerService.startContainer(school.containerName);
+  if (!ok) return res.redirect(`/schools/${school.id}?error=Container failed to start.`);
+
+  await MasterDb.updateSchool(school.id, { status: 'active' });
+  res.redirect(`/schools/${school.id}?success=Container started successfully.`);
 });
 
 router.post('/:id/stop', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
-  if (school) {
-    await DockerService.stopContainer(school.containerName);
-    await MasterDb.updateSchool(school.id, { status: 'stopped' });
-  }
-  res.redirect(`/schools/${req.params.id}?success=Container stopped.`);
+  if (!school) return res.redirect('/schools');
+
+  const ok = await DockerService.stopContainer(school.containerName);
+  if (!ok) return res.redirect(`/schools/${school.id}?error=Container failed to stop.`);
+
+  await MasterDb.updateSchool(school.id, { status: 'stopped' });
+  res.redirect(`/schools/${school.id}?success=Container stopped.`);
 });
 
 router.post('/:id/restart', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE), async (req: Request, res: Response) => {
   const school = await MasterDb.getSchoolById(req.params.id);
-  if (school) {
-    await DockerService.restartContainer(school.containerName);
-  }
-  res.redirect(`/schools/${req.params.id}?success=Container restarted successfully.`);
+  if (!school) return res.redirect('/schools');
+
+  const ok = await DockerService.restartContainer(school.containerName);
+  if (!ok) return res.redirect(`/schools/${school.id}?error=Container failed to restart.`);
+
+  res.redirect(`/schools/${school.id}?success=Container restarted successfully.`);
 });
 
 router.post('/:id/suspend', requirePermission(PERMISSIONS.SCHOOLS_LIFECYCLE), async (req: Request, res: Response) => {
