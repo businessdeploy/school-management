@@ -2,7 +2,7 @@
 
 <!-- Flash Notifications -->
 <% if (success) { %>
-  <div class="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center justify-between shadow-lg shadow-emerald-500/5">
+  <div class="mb-5 p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center justify-between">
     <div class="flex items-center space-x-2">
       <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
       <span class="font-medium"><%= success %></span>
@@ -12,7 +12,7 @@
 <% } %>
 
 <% if (error) { %>
-  <div class="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between shadow-lg shadow-rose-500/5">
+  <div class="mb-5 p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between">
     <div class="flex items-center space-x-2">
       <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
       <span class="font-medium"><%= error %></span>
@@ -22,7 +22,7 @@
 <% } %>
 
 <!-- Header Bar -->
-<div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+<div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
   <div>
     <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
       <a href="/schools" class="hover:text-indigo-400 flex items-center space-x-1">
@@ -33,19 +33,19 @@
       <span class="font-mono text-slate-300"><%= school.slug %></span>
     </div>
     <div class="flex items-center space-x-3">
-      <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight"><%= school.name %></h1>
+      <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight"><%= school.name %></h1>
       <% if (school.status === 'active') { %>
-        <span class="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
           <span>Active</span>
         </span>
       <% } else if (school.status === 'suspended') { %>
-        <span class="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+        <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
           <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
           <span>Suspended</span>
         </span>
       <% } else { %>
-        <span class="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">
+        <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20">
           <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
           <span>Stopped</span>
         </span>
@@ -54,15 +54,12 @@
   </div>
 
   <!-- Primary Action Controls -->
-  <div class="flex flex-wrap items-center gap-2.5">
-    <!-- Download SQL Backup -->
-    <a href="/schools/<%= school.id %>/backup-db" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center space-x-1.5 shadow-sm">
+  <div class="flex flex-wrap items-center gap-2">
+    <a href="/schools/<%= school.id %>/backup-db" class="btn-control btn-control-secondary">
       <i data-lucide="download" class="w-3.5 h-3.5 text-slate-400"></i>
       <span>Backup SQL</span>
     </a>
-
-    <!-- Primary SSO Button -->
-    <a href="/schools/<%= school.id %>/sso-login" target="_blank" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition flex items-center space-x-1.5">
+    <a href="/schools/<%= school.id %>/sso-login" target="_blank" class="btn-control btn-control-primary">
       <i data-lucide="zap" class="w-3.5 h-3.5"></i>
       <span>Login as Super Admin</span>
     </a>
@@ -70,28 +67,28 @@
 </div>
 
 <!-- 3-Column Telemetry & Security Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
 
   <!-- Panel 1: Live Domain & Public Routing -->
-  <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-4 shadow-xl">
-    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
-      <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center space-x-2">
+  <div class="control-surface p-5 space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+      <h2 class="text-xs font-semibold text-indigo-400 flex items-center space-x-2">
         <i data-lucide="globe" class="w-4 h-4"></i>
-        <span>Live Domain & Routing</span>
-      </h3>
+        <span>Live Domain &amp; Routing</span>
+      </h2>
       <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">Port 80/443</span>
     </div>
 
-    <div class="space-y-3 text-xs">
+    <div class="space-y-2.5 text-xs">
       <div>
         <span class="text-slate-400 block text-[11px] mb-1">Primary School Access URL:</span>
-        <a href="https://<%= school.customDomain || school.subdomain %>" target="_blank" class="font-mono text-emerald-400 hover:underline flex items-center space-x-1.5 break-all bg-emerald-500/5 p-2.5 rounded-xl border border-emerald-500/20 font-bold">
+        <a href="https://<%= school.customDomain || school.subdomain %>" target="_blank" class="font-mono text-emerald-400 hover:underline flex items-center space-x-1.5 break-all bg-emerald-500/5 p-2 rounded-lg border border-emerald-500/20 font-semibold">
           <i data-lucide="external-link" class="w-3.5 h-3.5 shrink-0"></i>
           <span>https://<%= school.customDomain || school.subdomain %></span>
         </a>
       </div>
 
-      <div class="pt-2 border-t border-slate-800/60 flex justify-between">
+      <div class="pt-2 border-t border-slate-800 flex justify-between">
         <span class="text-slate-400">Fleet Subdomain:</span>
         <span class="font-mono text-slate-200"><%= school.subdomain %></span>
       </div>
@@ -105,20 +102,20 @@
 
       <div class="flex justify-between">
         <span class="text-slate-400">SSL Certificate:</span>
-        <span class="inline-flex items-center space-x-1 text-emerald-400 font-semibold">
+        <span class="inline-flex items-center space-x-1 text-emerald-400 font-medium">
           <i data-lucide="lock" class="w-3.5 h-3.5"></i>
           <span>Auto-TLS Active</span>
         </span>
       </div>
 
-      <div class="pt-2 border-t border-slate-800/60 flex justify-between">
+      <div class="pt-2 border-t border-slate-800 flex justify-between">
         <span class="text-slate-400">Cluster Host:</span>
         <span class="font-mono text-slate-300"><%= currentHost %></span>
       </div>
 
       <!-- DNS Instructions Box -->
-      <div class="mt-4 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-[11px] text-slate-400">
-        <span class="font-semibold text-slate-300 flex items-center space-x-1 mb-1">
+      <div class="mt-3 p-3 bg-slate-900 rounded-lg border border-slate-800 text-[11px] text-slate-400">
+        <span class="font-medium text-slate-300 flex items-center space-x-1 mb-1">
           <i data-lucide="info" class="w-3.5 h-3.5 text-indigo-400"></i>
           <span>Custom Domain DNS Mapping:</span>
         </span>
@@ -128,24 +125,24 @@
   </div>
 
   <!-- Panel 2: Super Admin Security & Password Reset -->
-  <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-4 shadow-xl">
-    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
-      <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center space-x-2">
+  <div class="control-surface p-5 space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+      <h2 class="text-xs font-semibold text-amber-400 flex items-center space-x-2">
         <i data-lucide="shield-alert" class="w-4 h-4"></i>
         <span>Super Admin Security</span>
-      </h3>
+      </h2>
       <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400">Role ID: 7</span>
     </div>
 
     <div class="space-y-3 text-xs">
       <div class="flex justify-between py-1">
-        <span class="text-slate-400">Super Admin Email:</span>
+        <span class="text-slate-400">Admin Email:</span>
         <span class="font-mono text-white font-medium"><%= school.adminEmail %></span>
       </div>
 
-      <div class="flex justify-between py-1 border-b border-slate-800/60 pb-3">
+      <div class="flex justify-between py-1 border-b border-slate-800 pb-2.5">
         <span class="text-slate-400">Direct Impersonation:</span>
-        <a href="/schools/<%= school.id %>/sso-login" target="_blank" class="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1">
+        <a href="/schools/<%= school.id %>/sso-login" target="_blank" class="text-indigo-400 hover:text-indigo-300 font-medium flex items-center space-x-1">
           <i data-lucide="zap" class="w-3.5 h-3.5"></i>
           <span>Launch SSO</span>
           <i data-lucide="arrow-up-right" class="w-3 h-3"></i>
@@ -153,13 +150,13 @@
       </div>
 
       <!-- Password Reset Form -->
-      <form action="/schools/<%= school.id %>/reset-password" method="POST" class="space-y-3 pt-1">
+      <form action="/schools/<%= school.id %>/reset-password" method="POST" class="space-y-2.5 pt-1">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div>
-          <label class="block text-[11px] font-semibold text-slate-300 mb-1">Reset Super Admin Password</label>
-          <input type="text" name="newPassword" placeholder="Enter new password (min 6 chars)" required minlength="6" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs font-mono focus:outline-none focus:border-amber-500 transition" />
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">Reset Super Admin Password</label>
+          <input type="text" name="newPassword" placeholder="Enter new password (min 6 chars)" required minlength="6" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs font-mono focus:outline-none focus:border-amber-500 transition" />
         </div>
-        <button type="submit" class="w-full py-2.5 px-4 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl text-xs font-bold border border-amber-500/30 transition shadow-sm flex items-center justify-center space-x-1.5">
+        <button type="submit" class="w-full btn-control btn-control-secondary justify-center text-amber-400 hover:text-amber-300">
           <i data-lucide="key" class="w-3.5 h-3.5"></i>
           <span>Update Password in Database</span>
         </button>
@@ -169,19 +166,19 @@
   </div>
 
   <!-- Panel 3: Live MariaDB Telemetry & Data Management -->
-  <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-4 shadow-xl">
-    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
-      <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center space-x-2">
+  <div class="control-surface p-5 space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+      <h2 class="text-xs font-semibold text-emerald-400 flex items-center space-x-2">
         <i data-lucide="database" class="w-4 h-4"></i>
-        <span>Database & Metrics</span>
-      </h3>
+        <span>Database &amp; Metrics</span>
+      </h2>
       <% if (dbStats.isOnline) { %>
-        <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center space-x-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center space-x-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
           <span>Online</span>
         </span>
       <% } else { %>
-        <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">Disconnected</span>
+        <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">Disconnected</span>
       <% } %>
     </div>
 
@@ -191,28 +188,28 @@
         <span class="font-mono text-indigo-400 font-bold"><%= school.dbName %></span>
       </div>
 
-      <div class="grid grid-cols-2 gap-3 py-2">
-        <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-center">
-          <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Tables</span>
-          <span class="text-lg font-extrabold text-white"><%= dbStats.tableCount %></span>
+      <div class="grid grid-cols-2 gap-2.5 py-1">
+        <div class="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800 text-center">
+          <span class="text-[10px] text-slate-400 block">Tables</span>
+          <span class="text-base font-bold text-white num-tabular"><%= dbStats.tableCount %></span>
         </div>
-        <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-center">
-          <span class="text-[10px] text-slate-400 uppercase tracking-wider block">DB Size</span>
-          <span class="text-lg font-extrabold text-indigo-400"><%= dbStats.sizeMb %> <span class="text-xs font-normal">MB</span></span>
+        <div class="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800 text-center">
+          <span class="text-[10px] text-slate-400 block">Database Size</span>
+          <span class="text-base font-bold text-indigo-400 num-tabular"><%= dbStats.sizeMb %> <span class="text-xs font-normal">MB</span></span>
         </div>
-        <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-center">
-          <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Students</span>
-          <span class="text-lg font-extrabold text-emerald-400"><%= dbStats.studentsCount %></span>
+        <div class="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800 text-center">
+          <span class="text-[10px] text-slate-400 block">Students</span>
+          <span class="text-base font-bold text-emerald-400 num-tabular"><%= dbStats.studentsCount %></span>
         </div>
-        <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-center">
-          <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Staff</span>
-          <span class="text-lg font-extrabold text-amber-400"><%= dbStats.staffCount %></span>
+        <div class="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800 text-center">
+          <span class="text-[10px] text-slate-400 block">Staff</span>
+          <span class="text-base font-bold text-amber-400 num-tabular"><%= dbStats.staffCount %></span>
         </div>
       </div>
 
       <!-- 1-Click SQL Backup -->
-      <div class="pt-2">
-        <a href="/schools/<%= school.id %>/backup-db" class="w-full py-2.5 px-4 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-xl text-xs font-bold border border-indigo-500/30 transition shadow-sm flex items-center justify-center space-x-2">
+      <div class="pt-1">
+        <a href="/schools/<%= school.id %>/backup-db" class="w-full btn-control btn-control-secondary justify-center text-indigo-300">
           <i data-lucide="download" class="w-3.5 h-3.5"></i>
           <span>Download Complete SQL Dump</span>
         </a>
@@ -222,51 +219,51 @@
 </div>
 
 <!-- Bottom Grid: Configuration Editor & Runtime Lifecycle -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
   <!-- Panel 4: School Configuration & Quotas Editor -->
-  <div class="glass-card rounded-2xl p-6 border border-slate-800 shadow-xl space-y-4">
-    <div class="border-b border-slate-800/80 pb-3">
-      <h3 class="text-xs font-bold uppercase tracking-wider text-white flex items-center space-x-2">
+  <div class="control-surface p-5 space-y-4">
+    <div class="border-b border-slate-800 pb-2.5">
+      <h2 class="text-xs font-semibold text-white flex items-center space-x-2">
         <i data-lucide="sliders" class="w-4 h-4 text-indigo-400"></i>
-        <span>Edit School Configuration & Quotas</span>
-      </h3>
-      <p class="text-xs text-slate-400 mt-1">Update display identity, bound custom domains, storage allocations, or student limits.</p>
+        <span>Edit School Configuration &amp; Quotas</span>
+      </h2>
+      <p class="text-xs text-slate-400 mt-0.5">Update display identity, bound custom domains, storage allocations, or student limits.</p>
     </div>
 
-    <form action="/schools/<%= school.id %>/edit" method="POST" class="space-y-4 text-xs">
+    <form action="/schools/<%= school.id %>/edit" method="POST" class="space-y-3.5 text-xs">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div>
         <label class="block text-[11px] font-medium text-slate-300 mb-1">School Name</label>
-        <input type="text" name="name" value="<%= school.name %>" required class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+        <input type="text" name="name" value="<%= school.name %>" required class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">Admin Contact Email</label>
-          <input type="email" name="adminEmail" value="<%= school.adminEmail %>" required class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+          <input type="email" name="adminEmail" value="<%= school.adminEmail %>" required class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
         </div>
 
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">Custom Domain (Optional)</label>
-          <input type="text" name="customDomain" value="<%= school.customDomain || '' %>" placeholder="e.g. portal.school.edu" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs font-mono focus:outline-none focus:border-indigo-500 transition" />
+          <input type="text" name="customDomain" value="<%= school.customDomain || '' %>" placeholder="e.g. portal.school.edu" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs font-mono focus:outline-none focus:border-indigo-500 transition" />
         </div>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">Storage Quota (GB)</label>
-          <input type="number" name="storageQuotaGb" value="<%= school.storageQuotaGb %>" min="1" max="500" required class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+          <input type="number" name="storageQuotaGb" value="<%= school.storageQuotaGb %>" min="1" max="500" required class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
         </div>
 
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">Max Students</label>
-          <input type="number" name="maxStudents" value="<%= school.maxStudents %>" min="10" max="50000" required class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+          <input type="number" name="maxStudents" value="<%= school.maxStudents %>" min="10" max="50000" required class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
         </div>
 
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">School Status</label>
-          <select name="status" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition">
+          <select name="status" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition">
             <option value="active" <%= school.status === 'active' ? 'selected' : '' %>>Active</option>
             <option value="suspended" <%= school.status === 'suspended' ? 'selected' : '' %>>Suspended</option>
             <option value="stopped" <%= school.status === 'stopped' ? 'selected' : '' %>>Stopped / Maintenance</option>
@@ -275,7 +272,7 @@
       </div>
 
       <div class="pt-2 flex justify-end">
-        <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition flex items-center space-x-1.5">
+        <button type="submit" class="btn-control btn-control-primary">
           <i data-lucide="save" class="w-3.5 h-3.5"></i>
           <span>Save Changes</span>
         </button>
@@ -284,55 +281,55 @@
   </div>
 
   <!-- Panel 5: Runtime Lifecycle Controls & Container Logs -->
-  <div class="glass-card rounded-2xl p-6 border border-slate-800 shadow-xl flex flex-col justify-between space-y-6">
+  <div class="control-surface p-5 flex flex-col justify-between space-y-4">
     <div>
-      <div class="border-b border-slate-800/80 pb-3 mb-4">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-2">
+      <div class="border-b border-slate-800 pb-2.5 mb-3">
+        <h2 class="text-xs font-semibold text-slate-300 flex items-center space-x-2">
           <i data-lucide="cpu" class="w-4 h-4 text-indigo-400"></i>
           <span>Container Runtime Controls</span>
-        </h3>
-        <p class="text-xs text-slate-400 mt-1">Docker Target: <code class="text-indigo-400 font-mono"><%= school.containerName %></code> (<%= containerStatus %>)</p>
+        </h2>
+        <p class="text-xs text-slate-400 mt-0.5">Docker Target: <code class="text-indigo-400 font-mono"><%= school.containerName %></code> (<%= containerStatus %>)</p>
       </div>
 
       <!-- Action Buttons Grid -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
         <% if (school.status === 'active') { %>
           <form action="/schools/<%= school.id %>/restart" method="POST">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit" class="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold border border-slate-700 transition flex items-center justify-center space-x-1">
-              <i data-lucide="rotate-cw" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <button type="submit" class="w-full btn-control btn-control-secondary justify-center">
+              <i data-lucide="rotate-cw" class="w-3 h-3 text-indigo-400"></i>
               <span>Restart</span>
             </button>
           </form>
 
           <form action="/schools/<%= school.id %>/stop" method="POST">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit" class="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl text-xs font-semibold border border-slate-700 transition flex items-center justify-center space-x-1">
-              <i data-lucide="square" class="w-3.5 h-3.5 text-amber-400"></i>
+            <button type="submit" class="w-full btn-control btn-control-secondary justify-center text-amber-400">
+              <i data-lucide="square" class="w-3 h-3 text-amber-400"></i>
               <span>Stop</span>
             </button>
           </form>
 
           <form action="/schools/<%= school.id %>/suspend" method="POST">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit" class="w-full py-2.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl text-xs font-semibold border border-amber-500/30 transition flex items-center justify-center space-x-1">
-              <i data-lucide="pause-circle" class="w-3.5 h-3.5 text-amber-400"></i>
+            <button type="submit" class="w-full btn-control btn-control-secondary justify-center text-amber-300">
+              <i data-lucide="pause-circle" class="w-3 h-3 text-amber-400"></i>
               <span>Suspend</span>
             </button>
           </form>
         <% } else if (school.status === 'suspended') { %>
           <form action="/schools/<%= school.id %>/activate" method="POST">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit" class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1">
-              <i data-lucide="play" class="w-3.5 h-3.5"></i>
+            <button type="submit" class="w-full btn-control btn-control-primary justify-center">
+              <i data-lucide="play" class="w-3 h-3"></i>
               <span>Unsuspend</span>
             </button>
           </form>
         <% } else { %>
           <form action="/schools/<%= school.id %>/start" method="POST">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit" class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1">
-              <i data-lucide="play" class="w-3.5 h-3.5"></i>
+            <button type="submit" class="w-full btn-control btn-control-primary justify-center">
+              <i data-lucide="play" class="w-3 h-3"></i>
               <span>Start</span>
             </button>
           </form>
@@ -340,8 +337,8 @@
 
         <form action="/schools/<%= school.id %>/delete" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this school and container?');">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <button type="submit" class="w-full py-2.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold border border-rose-500/30 transition flex items-center justify-center space-x-1">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-400"></i>
+          <button type="submit" class="w-full btn-control btn-control-secondary justify-center text-rose-400 hover:text-rose-300">
+            <i data-lucide="trash-2" class="w-3 h-3 text-rose-400"></i>
             <span>Delete</span>
           </button>
         </form>
@@ -350,17 +347,17 @@
 
     <!-- Live Container Log Stream -->
     <div>
-      <h4 class="text-xs font-semibold text-slate-400 mb-2 flex items-center justify-between">
+      <div class="text-xs font-medium text-slate-400 mb-2 flex items-center justify-between">
         <span class="flex items-center space-x-1.5">
           <i data-lucide="terminal" class="w-3.5 h-3.5 text-slate-400"></i>
           <span>Container Runtime Logs (Last 50 lines)</span>
         </span>
         <span class="text-[10px] font-mono text-emerald-400 flex items-center space-x-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
           <span>Live Buffer</span>
         </span>
-      </h4>
-      <pre class="bg-slate-950 p-4 rounded-xl text-[11px] font-mono text-slate-300 overflow-x-auto max-h-52 border border-slate-800/80"><%= logs %></pre>
+      </div>
+      <pre class="bg-slate-950 p-3.5 rounded-lg text-[11px] font-mono text-slate-300 overflow-x-auto max-h-48 border border-slate-800"><%= logs %></pre>
     </div>
   </div>
 </div>

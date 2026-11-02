@@ -1,57 +1,55 @@
 <%- include('partials/header') %>
 
 <div class="max-w-3xl mx-auto">
-  <div class="mb-8">
-    <a href="/schools" class="text-xs text-slate-400 hover:text-indigo-400 transition mb-2 inline-flex items-center space-x-1">
+  <div class="mb-6">
+    <a href="/schools" class="text-xs text-slate-400 hover:text-indigo-400 transition mb-1 inline-flex items-center space-x-1">
       <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
       <span>Back to School Fleet</span>
     </a>
-    <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Instant School Onboarding Wizard</h1>
-    <p class="text-slate-400 text-xs sm:text-sm mt-1">Provisions dedicated tenant database, seeds 196 tables, generates superadmin, and connects container in seconds.</p>
+    <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight">Onboard New School Instance</h1>
+    <p class="text-slate-400 text-xs sm:text-sm mt-0.5">Provisions a dedicated tenant database, seeds the schema, creates the superadmin account, and configures routing.</p>
   </div>
 
   <% if (error) { %>
-    <div class="p-4 mb-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium flex items-center space-x-2">
+    <div class="p-3.5 mb-5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium flex items-center space-x-2">
       <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
       <span><%= error %></span>
     </div>
   <% } %>
 
-  <div class="glass-card rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-2xl">
-    <form action="/schools/create" method="POST" class="space-y-6">
+  <div class="control-surface p-6">
+    <form action="/schools/create" method="POST" class="space-y-5 text-xs">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       
       <!-- Section 1: Institution Identity -->
       <div>
-        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-4 flex items-center space-x-2">
-          <span class="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold">1</span>
-          <span>Institution Identity</span>
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h2 class="text-xs font-semibold text-white mb-3 flex items-center space-x-2 border-b border-slate-800 pb-2">
+          <i data-lucide="school" class="w-4 h-4 text-indigo-400"></i>
+          <span>1. Institution Identity</span>
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">School Name *</label>
-            <input type="text" name="name" required placeholder="e.g. Oakridge International" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">School Name *</label>
+            <input type="text" name="name" required placeholder="e.g. Oakridge International" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">Subdomain Slug (URL Identifier) *</label>
-            <div class="flex items-center">
-              <input type="text" name="slug" required placeholder="oakridge" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition font-mono" />
-            </div>
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">Subdomain Slug (URL Identifier) *</label>
+            <input type="text" name="slug" required placeholder="oakridge" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition font-mono" />
           </div>
         </div>
       </div>
 
       <!-- Section 2: Network & Custom Domain -->
-      <div class="pt-4 border-t border-slate-800">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-4 flex items-center space-x-2">
-          <span class="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold">2</span>
-          <span>Network & Domain Routing</span>
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="pt-2">
+        <h2 class="text-xs font-semibold text-white mb-3 flex items-center space-x-2 border-b border-slate-800 pb-2">
+          <i data-lucide="network" class="w-4 h-4 text-indigo-400"></i>
+          <span>2. Network &amp; Domain Routing</span>
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">Parent Network</label>
-            <select name="networkId" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition">
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">Parent Network</label>
+            <select name="networkId" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition">
               <% networks.forEach(function(n) { %>
                 <option value="<%= n.id %>"><%= n.name %> (*.<%= n.rootDomain %>)</option>
               <% }); %>
@@ -59,68 +57,68 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">Custom Domain (Optional)</label>
-            <input type="text" name="customDomain" placeholder="e.g. portal.oakridge.edu" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition font-mono" />
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">Custom Domain (Optional)</label>
+            <input type="text" name="customDomain" placeholder="e.g. portal.oakridge.edu" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition font-mono" />
           </div>
         </div>
       </div>
 
       <!-- Section 3: Super Admin Access -->
-      <div class="pt-4 border-t border-slate-800">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-4 flex items-center space-x-2">
-          <span class="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold">3</span>
-          <span>School Super Admin Credentials</span>
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="pt-2">
+        <h2 class="text-xs font-semibold text-white mb-3 flex items-center space-x-2 border-b border-slate-800 pb-2">
+          <i data-lucide="shield-check" class="w-4 h-4 text-indigo-400"></i>
+          <span>3. School Super Admin Credentials</span>
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">Super Admin Email *</label>
-            <input type="email" name="adminEmail" required placeholder="admin@school.edu" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">Super Admin Email *</label>
+            <input type="email" name="adminEmail" required placeholder="admin@school.edu" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">Initial Password</label>
-            <input type="password" name="adminPassword" value="Admin@123456" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">Initial Password</label>
+            <input type="password" name="adminPassword" value="Admin@123456" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
           </div>
         </div>
       </div>
 
       <!-- Section 4: Localization & Capacity -->
-      <div class="pt-4 border-t border-slate-800">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-4 flex items-center space-x-2">
-          <span class="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold">4</span>
-          <span>Quotas & Localization</span>
-        </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="pt-2">
+        <h2 class="text-xs font-semibold text-white mb-3 flex items-center space-x-2 border-b border-slate-800 pb-2">
+          <i data-lucide="sliders" class="w-4 h-4 text-indigo-400"></i>
+          <span>4. Quotas &amp; Localization</span>
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">Currency</label>
-            <input type="text" name="currencySymbol" value="₹" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">Currency Symbol</label>
+            <input type="text" name="currencySymbol" value="₹" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">Timezone</label>
-            <input type="text" name="timezone" value="UTC" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">Timezone</label>
+            <input type="text" name="timezone" value="Asia/Kolkata" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">Storage Quota (GB)</label>
-            <input type="number" name="storageQuotaGb" value="10" min="1" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">Storage Quota (GB)</label>
+            <input type="number" name="storageQuotaGb" value="10" min="1" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">Max Students</label>
-            <input type="number" name="maxStudents" value="1500" min="10" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">Max Students</label>
+            <input type="number" name="maxStudents" value="1500" min="10" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500 transition" />
           </div>
         </div>
       </div>
 
       <!-- Submit Actions -->
-      <div class="pt-6 border-t border-slate-800 flex items-center justify-end space-x-3">
-        <a href="/schools" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+      <div class="pt-4 border-t border-slate-800 flex items-center justify-end space-x-2">
+        <a href="/schools" class="btn-control btn-control-secondary">
           Cancel
         </a>
-        <button type="submit" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition flex items-center space-x-2">
-          <i data-lucide="sparkles" class="w-4 h-4"></i>
-          <span>Provision & Launch School</span>
+        <button type="submit" class="btn-control btn-control-primary">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+          <span>Provision &amp; Launch School</span>
         </button>
       </div>
     </form>

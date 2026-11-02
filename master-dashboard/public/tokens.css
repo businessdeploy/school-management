@@ -1,0 +1,196 @@
+/* Hallmark · tokens.css · scope: app · genre: modern-minimal
+ * Prime School Fleet Master Control Plane Design System
+ * Primeskill Solutions Private Limited */
+
+:root {
+  /* Surface Ladder */
+  --surface-canvas: #090d16;
+  --surface-panel: #0f172a;
+  --surface-subtle: #141f36;
+  --surface-overlay: #1e293b;
+  --surface-hover: #27354f;
+
+  /* Typography */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+
+  /* Text & Inks */
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
+  --text-inverse: #090d16;
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(99, 102, 241, 0.35);
+  --border-focus: #6366f1;
+
+  /* Brand Accent */
+  --accent-primary: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-subtle: rgba(79, 70, 229, 0.12);
+  --accent-border: rgba(99, 102, 241, 0.25);
+  --accent-ink: #ffffff;
+
+  /* Status Colors (Semantic) */
+  --status-active: #10b981;
+  --status-active-subtle: rgba(16, 185, 129, 0.12);
+  --status-active-border: rgba(16, 185, 129, 0.25);
+
+  --status-warning: #f59e0b;
+  --status-warning-subtle: rgba(245, 158, 11, 0.12);
+  --status-warning-border: rgba(245, 158, 11, 0.25);
+
+  --status-danger: #ef4444;
+  --status-danger-subtle: rgba(239, 68, 68, 0.12);
+  --status-danger-border: rgba(239, 68, 68, 0.25);
+
+  /* Radius Scale */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+
+  /* Motion & Easing */
+  --dur-instant: 50ms;
+  --dur-micro: 120ms;
+  --dur-short: 180ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Floor 4: overflow-x: clip on html and body */
+html, body {
+  overflow-x: clip;
+  font-family: var(--font-sans);
+  background-color: var(--surface-canvas);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+}
+
+/* Floor 6: Instant focus-visible */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Finish 6: Tabular figures on all financial and count data */
+.num-tabular,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Floor 7: Reduced motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Themed Browser Surfaces */
+::selection {
+  background-color: var(--accent-primary);
+  color: var(--accent-ink);
+}
+
+/* Modern Control Plane Panel Primitives */
+.control-surface {
+  background-color: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-micro) var(--ease-standard);
+}
+
+.control-surface:hover {
+  border-color: var(--border-hover);
+}
+
+.control-row {
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color var(--dur-instant) var(--ease-standard);
+}
+
+.control-row:hover {
+  background-color: var(--surface-subtle);
+}
+
+/* High-density Buttons */
+.btn-control {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--dur-micro) var(--ease-standard),
+              border-color var(--dur-micro) var(--ease-standard),
+              transform var(--dur-instant) var(--ease-standard);
+}
+
+.btn-control:active {
+  transform: translateY(1px);
+}
+
+.btn-control-primary {
+  background-color: var(--accent-primary);
+  color: var(--accent-ink);
+  border: 1px solid transparent;
+}
+
+.btn-control-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.btn-control-secondary {
+  background-color: var(--surface-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+}
+
+.btn-control-secondary:hover {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+/* Operational Table Styling */
+.table-dense {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+
+.table-dense th {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: left;
+  border-bottom: 1px solid var(--border-default);
+  background-color: var(--surface-subtle);
+  white-space: nowrap;
+}
+
+.table-dense td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.table-dense tr:hover td {
+  background-color: var(--surface-hover);
+}
